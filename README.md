@@ -4,7 +4,7 @@
 
 **Classificação automatizada de chamados, análise de sentimento, priorização por SLA/urgência e geração de respostas contextualizadas com LLM (Anthropic Claude).**
 
-[![Live Demo](https://img.shields.io/badge/🔗_Demonstração_Online-triagem--inteligente--ticia.vercel.app-F39200?style=for-the-badge)](https://triagem-inteligente-ticia.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Demonstração_Online-triagem--inteligente--ticia.vercel.app-F39200?style=for-the-badge)](https://triagem-inteligente-ticia.vercel.app)
 
 ![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
@@ -16,7 +16,7 @@
 
 ---
 
-## 📌 Visão Geral e Problema de Negócio
+## Visão Geral e Problema de Negócio
 
 Equipes de suporte ao cliente lidam diariamente com altos volumes de mensagens vindas de múltiplos canais (`WhatsApp`, `E-mail`, `Chat`, `Instagram` e `Telefone`). A triagem manual gera gargalos operacionais: **chamados críticos de cancelamento ou indisponibilidade técnica demoram a ser identificados**, enquanto solicitações simples consomem tempo valioso dos analistas.
 
@@ -26,11 +26,11 @@ O **Triagem Inteligente** resolve esse desafio aplicando Inteligência Artificia
 3. **Sugestão de resposta pronta para envio**, alinhada dinamicamente ao tom de voz configurado pela empresa.
 4. **Visibilidade gerencial** com métricas de produtividade e tempo operacional economizado.
 
-> 🔗 **Acesse a aplicação em produção:** [https://triagem-inteligente-ticia.vercel.app](https://triagem-inteligente-ticia.vercel.app)
+> **Acesse a aplicação em produção:** [https://triagem-inteligente-ticia.vercel.app](https://triagem-inteligente-ticia.vercel.app)
 
 ---
 
-## 🛠️ Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
 | Camada | Tecnologia | Papel na Arquitetura |
 | :--- | :--- | :--- |
@@ -42,7 +42,7 @@ O **Triagem Inteligente** resolve esse desafio aplicando Inteligência Artificia
 
 ---
 
-## ⚙️ Fluxo de Arquitetura e Validação de Dados
+## Fluxo de Arquitetura e Validação de Dados
 
 Para garantir que a interface nunca quebre caso o modelo de linguagem retorne formatações inesperadas (como blocos Markdown ao redor do JSON), o backend implementa um pipeline de sanitização e validação estrita antes de devolver a resposta ao cliente:
 
@@ -72,18 +72,18 @@ flowchart LR
 
 ---
 
-## ✨ Funcionalidades Principais
+## Funcionalidades Principais
 
-- **📥 Caixa de Entrada Multicanal**: Listagem com identificação do cliente, canal de origem, horário e resumo executivo gerado pela IA. Inclui adição manual de novos tickets e carregamento em lote de **15 cenários reais de suporte**.
-- **🚦 Priorização Automática e Filtros Combinados**: Ordenação automática por peso de urgência (`Alta` → `Média` → `Baixa`), busca textual em tempo real e filtros combinados por **Categoria**, **Urgência** e **Status** (*Todos*, *Pendentes*, *Escalar Humano*, *Resolvidos*).
-- **🚨 Regra de Escalonamento Crítico (`Human-in-the-Loop`)**: Quando uma mensagem apresenta simultaneamente **`Urgência Alta`** e **`Sentimento Negativo`**, o sistema destaca um alerta visual imediato (**"Escalar para humano"**) para intervenção de um especialista sênior.
-- **✍️ Editor de Resposta com Refinamento Rápido**: Campo editável com a sugestão da IA, botões de ajuste de 1 clique (*"Mais curta"*, *"Mais formal"*, *"+ Pedir CPF/Pedido"*), cópia rápida para a área de transferência e controle de tickets resolvidos.
-- **📊 Painel de Métricas e Exportação CSV**: Cálculo em tempo real do total de chamados, distribuição percentual (`%`) por urgência, gráficos de volume por categoria/sentimento, estimativa de **tempo economizado** (base de 4 min por atendimento manual) e exportação para planilha `.csv`.
-- **🛡️ Resiliência e Tratamento de Falhas**: Processamento assíncrono em lotes controlados (*batching*) com captura de erros de rede/API e opção de reprocessamento individual ou em massa (**"Tentar de novo"**).
+- **Caixa de Entrada Multicanal**: Listagem com identificação do cliente, canal de origem, horário e resumo executivo gerado pela IA. Inclui adição manual de novos tickets e carregamento em lote de **15 cenários reais de suporte**.
+- **Priorização Automática e Filtros Combinados**: Ordenação automática por peso de urgência (`Alta` → `Média` → `Baixa`), busca textual em tempo real e filtros combinados por **Categoria**, **Urgência** e **Status** (*Todos*, *Pendentes*, *Escalar Humano*, *Resolvidos*).
+- **Regra de Escalonamento Crítico (`Human-in-the-Loop`)**: Quando uma mensagem apresenta simultaneamente **`Urgência Alta`** e **`Sentimento Negativo`**, o sistema destaca um alerta visual imediato (**"Escalar para humano"**) para intervenção de um especialista sênior.
+- **Editor de Resposta com Refinamento Rápido**: Campo editável com a sugestão da IA, botões de ajuste de 1 clique (*"Mais curta"*, *"Mais formal"*, *"+ Pedir CPF/Pedido"*), cópia rápida para a área de transferência e controle de tickets resolvidos.
+- **Painel de Métricas e Exportação CSV**: Cálculo em tempo real do total de chamados, distribuição percentual (`%`) por urgência, gráficos de volume por categoria/sentimento, estimativa de **tempo economizado** (base de 4 min por atendimento manual) e exportação para planilha `.csv`.
+- **Resiliência e Tratamento de Falhas**: Processamento assíncrono em lotes controlados (*batching*) com captura de erros de rede/API e opção de reprocessamento individual ou em massa (**"Tentar de novo"**).
 
 ---
 
-## 🧠 Decisões Técnicas de Destaque
+## Decisões Técnicas de Destaque
 
 1. **Arquitetura *Zero-Config Demo Fallback* (`lib/fallback.ts`)**:
    - **Motivação**: Em avaliações técnicas de portfólio, recrutadores frequentemente testam a aplicação publicada ou clonada sem possuir uma chave paga da Anthropic (`ANTHROPIC_API_KEY`).
@@ -95,7 +95,7 @@ flowchart LR
 
 ---
 
-## 📂 Estrutura de Diretórios
+## Estrutura de Diretórios
 
 ```text
 ├── app/
@@ -118,7 +118,7 @@ flowchart LR
 
 ---
 
-## 🚀 Como Executar o Projeto Localmente
+## Como Executar o Projeto Localmente
 
 ### Pré-requisitos
 - **Node.js** `v18.18+` ou `v20+`
@@ -146,7 +146,7 @@ flowchart LR
    ```env
    ANTHROPIC_API_KEY=sk-ant-api03-sua-chave-aqui
    ```
-   > 💡 *Caso não possua uma chave da Anthropic no momento, você pode rodar o projeto normalmente (ele utilizará o Modo Demonstração) ou inserir uma chave a qualquer instante clicando no botão **"Chave API"** no cabeçalho da aplicação.*
+   > *Nota: Caso não possua uma chave da Anthropic no momento, você pode rodar o projeto normalmente (ele utilizará o Modo Demonstração) ou inserir uma chave a qualquer instante clicando no botão **"Chave API"** no cabeçalho da aplicação.*
 
 4. **Inicie o servidor de desenvolvimento:**
    ```bash
@@ -155,11 +155,3 @@ flowchart LR
 
 5. **Acesse no navegador:**
    Abra [http://localhost:3000](http://localhost:3000).
-
----
-
-## 👩‍💻 Autora
-
-Desenvolvido por **Letícia Cruz Costa**  
-- GitHub: [@ticiacruzcosta](https://github.com/ticiacruzcosta)
-- Projeto Online: [triagem-inteligente-ticia.vercel.app](https://triagem-inteligente-ticia.vercel.app)
