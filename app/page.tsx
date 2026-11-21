@@ -625,26 +625,13 @@ export default function PaginaTriagemInteligente() {
       <main className="relative z-10 w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (TOPO COM TOPO, BASE COM BASE) */}
         <header className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-6 items-stretch">
-          {/* Esquerda (Cols 1-6): Título Display + Subtítulo na base */}
-          <div className="lg:col-span-6 flex flex-col justify-between space-y-3">
+          {/* Esquerda (Cols 1-6): Título Display */}
+          <div className="lg:col-span-6 flex flex-col justify-between">
             <h1 className="text-4xl sm:text-[56px] font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.94]">
               Triagem
               <br />
               Inteligente
             </h1>
-            <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs font-medium text-[#3D3E40]">
-              <span>Version 2.1 | Claude Sonnet 4</span>
-              <span className="text-[#B5B4B0]">|</span>
-              <span>Clean SaaS Monochrome</span>
-              {modoExecucao === "demonstracao" && (
-                <>
-                  <span className="text-[#B5B4B0]">|</span>
-                  <span className="chip chip-neutro text-[11px] py-0.5">
-                    Modo Demo Ativo
-                  </span>
-                </>
-              )}
-            </div>
           </div>
 
           {/* Direita (Cols 7-12): Botões alinhados no Topo + Tabs alinhadas na Base */}
