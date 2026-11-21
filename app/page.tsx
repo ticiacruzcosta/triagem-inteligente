@@ -272,15 +272,16 @@ export default function PaginaTriagemInteligente() {
     await classificarMensagem(novaMsg, tomEmpresa, apiKeyCustom);
   };
 
-  // Carregar 15 exemplos
+  // Carregar 15 exemplos (Operação Idempotente e Atômica: evita duplicação dos exemplos)
   const handleCarregarExemplos = async () => {
     if (carregandoLote) return;
     setCarregandoLote(true);
 
-    const timestampBase = Date.now();
+    // IDs determinísticos ("ex-padrao-0" a "ex-padrao-14") garantem atomicidade e idempotência:
+    // nunca duplica os 15 exemplos mesmo que o botão seja clicado mais de uma vez.
     const novasMensagens: MensagemCliente[] = EXEMPLOS_MENSAGENS.map(
       (ex, idx) => ({
-        id: `ex-${timestampBase}-${idx}`,
+        id: `ex-padrao-${idx}`,
         nome: ex.nome,
         canal: ex.canal,
         texto: ex.texto,
@@ -290,7 +291,12 @@ export default function PaginaTriagemInteligente() {
       })
     );
 
-    setMensagens((prev) => [...novasMensagens, ...prev]);
+    setMensagens((prev) => {
+      // Mantém apenas mensagens criadas manualmente pelo usuário, substituindo o lote de 15 exemplos de forma atômica
+      const apenasManuais = prev.filter((m) => !m.id.startsWith("ex-"));
+      return [...novasMensagens, ...apenasManuais];
+    });
+
     if (novasMensagens.length > 0) {
       setIdSelecionado(novasMensagens[0].id);
     }
@@ -600,6 +606,11 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
+  const exemplosJaCarregados = useMemo(
+    () => mensagens.some((m) => m.id.startsWith("ex-")),
+    [mensagens]
+  );
+
   const rotuloTomAtivo =
     PRESETS_PERSONALIDADE.find((p) => p.valor === tomEmpresa)?.rotulo.replace(
       "Tom: ",
@@ -651,15 +662,30 @@ export default function PaginaTriagemInteligente() {
               <button
                 type="button"
                 onClick={handleCarregarExemplos}
-                disabled={carregandoLote}
+                disabled={carregandoLote || exemplosJaCarregados}
                 className="btn btn-principal px-5 py-2.5 text-xs"
+                title={
+                  exemplosJaCarregados
+                    ? "Os 15 exemplos já foram carregados na fila"
+                    : "Carregar lote de 15 exemplos"
+                }
               >
                 {carregandoLote ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Carregando exemplos...
+                  </>
+                ) : exemplosJaCarregados ? (
+                  <>
+                    <Check className="h-3.5 w-3.5" />
+                    15 exemplos carregados
+                  </>
                 ) : (
-                  <Inbox className="h-3.5 w-3.5" />
+                  <>
+                    <Inbox className="h-3.5 w-3.5" />
+                    Carregar 15 exemplos
+                  </>
                 )}
-                Carregar 15 exemplos
               </button>
 
               <button
