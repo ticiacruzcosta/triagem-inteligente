@@ -903,141 +903,6 @@ export default function PaginaTriagemInteligente() {
           </div>
         </section>
 
-        {/* PAINEL DE CONFIGURAÇÕES (TOM DA EMPRESA + CHAVE API) - SÓ EXIBIDO QUANDO A ABA CONFIGURAÇÕES ESTIVER ATIVA */}
-        {abaAtiva === "configuracoes" && (
-          <section className="cartao p-5 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8D5CE] pb-3">
-              <div className="flex items-center gap-2">
-                <SlidersHorizontal className="h-4 w-4 text-[#0E4D52]" />
-                <span className="tabela-cab">
-                  CONFIGURAÇÕES DO SISTEMA (TOM DA EMPRESA & API)
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[11px] font-semibold text-[#787877] mr-1">
-                  Modelos de tom:
-                </span>
-                {PRESETS_PERSONALIDADE.map((preset) => {
-                  const ativo = tomEmpresa === preset.valor;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => setTomEmpresa(preset.valor)}
-                      className={`chip text-[11px] py-0.5 px-2.5 ${
-                        ativo ? "chip-ativo" : "chip-neutro"
-                      }`}
-                    >
-                      {preset.rotulo}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-5 space-y-1.5">
-                <label
-                  htmlFor="input-tom-empresa"
-                  className="tabela-cab flex items-center gap-1.5"
-                >
-                  TOM DA EMPRESA (USADO NO PROMPT DA IA)
-                </label>
-                <input
-                  id="input-tom-empresa"
-                  type="text"
-                  value={tomEmpresa}
-                  onChange={(e) => setTomEmpresa(e.target.value)}
-                  placeholder="Defina o tom de voz usado pela IA..."
-                  className="campo"
-                />
-              </div>
-
-              <div className="lg:col-span-3 space-y-1.5">
-                <label
-                  htmlFor="select-provedor-ia"
-                  className="tabela-cab flex items-center gap-1.5"
-                >
-                  PROVEDOR DE IA (LLM)
-                </label>
-                <select
-                  id="select-provedor-ia"
-                  value={provedorIA}
-                  onChange={(e) =>
-                    setProvedorIA(e.target.value as ProvedorIA)
-                  }
-                  className="campo font-semibold"
-                >
-                  <option value="anthropic">
-                    Anthropic (Claude Sonnet 4)
-                  </option>
-                  <option value="openai">OpenAI (GPT-4o Mini)</option>
-                  <option value="gemini">Google (Gemini 2.5 Flash)</option>
-                  <option value="groq">Groq (Llama 3.3 70B)</option>
-                </select>
-              </div>
-
-              <div className="lg:col-span-4 space-y-1.5">
-                <label
-                  htmlFor="input-api-key"
-                  className="tabela-cab flex items-center gap-1.5"
-                >
-                  <KeyRound className="h-3.5 w-3.5 text-[#0E4D52]" />
-                  CHAVE DA API ({INFO_PROVEDORES[provedorIA].envVar})
-                </label>
-                <input
-                  id="input-api-key"
-                  type="password"
-                  value={apiKeyCustom}
-                  onChange={(e) => setApiKeyCustom(e.target.value)}
-                  placeholder={INFO_PROVEDORES[provedorIA].placeholderKey}
-                  className="campo font-mono"
-                />
-              </div>
-            </div>
-          </section>
-        )}
-
-        {abaAtiva === "analitico" && (
-          <section className="cartao p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="tabela-cab flex items-center gap-1.5">
-                <BarChart3 className="h-3.5 w-3.5 text-[#0E4D52]" />
-                DISTRIBUIÇÃO POR CATEGORIA & SENTIMENTO
-              </span>
-              <span className="text-xs text-[#787877]">
-                {metricas.totalClassificadas} chamados analisados
-              </span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {metricas.porCategoria.map((item) => (
-                <div
-                  key={item.categoria}
-                  className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3"
-                >
-                  <span className="block text-[11px] font-bold text-[#3D3E40] truncate">
-                    {item.categoria}
-                  </span>
-                  <div className="mt-1 flex items-baseline justify-between">
-                    <span className="text-xl font-extrabold text-[#18191A]">
-                      {item.count}
-                    </span>
-                    <span className="font-mono text-[11px] text-[#0E4D52] font-bold">
-                      {item.pct}%
-                    </span>
-                  </div>
-                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#D8D5CE]">
-                    <div
-                      className="h-full bg-[#0E4D52]"
-                      style={{ width: `${item.pct}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* ALERTA GLOBAL DE ERRO DE API (SE HOUVER) */}
         {metricas.qtdErros > 0 && (
           <div className="alerta-erro px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold">
@@ -1062,8 +927,11 @@ export default function PaginaTriagemInteligente() {
           </div>
         )}
 
-        {/* 4. ÁREA DE TRABALHO EM 2 COLUNAS COM ALINHAMENTO PERFEITO DE TOPO E BASE (5 COLS ESQUERDA | 7 COLS DIREITA) */}
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch">
+        {/* =======================================================================
+            ABA 1: OVERVIEW & FILA (CAIXA DE ENTRADA + PAINEL DE INSPEÇÃO & RESPOSTA)
+           ======================================================================= */}
+        {abaAtiva === "triagem" && (
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch animate-in fade-in duration-150">
           {/* COLUNA ESQUERDA (Cols 1-5): RÓTULO + CARD UNIFICADO DE CAIXA DE ENTRADA */}
           <div className="lg:col-span-5 flex flex-col space-y-2">
             <div className="flex items-center justify-between h-5">
@@ -1622,6 +1490,281 @@ export default function PaginaTriagemInteligente() {
             )}
           </div>
         </section>
+        )}
+
+        {/* =======================================================================
+            ABA 2: MÉTRICAS & CATEGORIAS (VISÃO DEDICADA DE ANÁLISE GERENCIAL)
+           ======================================================================= */}
+        {abaAtiva === "analitico" && (
+          <section className="space-y-6 animate-in fade-in duration-150">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+              {/* Distribuição por Categoria (8 Colunas) */}
+              <div className="lg:col-span-8 cartao p-6 space-y-5">
+                <div className="flex items-center justify-between border-b border-[#D8D5CE] pb-3.5">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-[#0E4D52]" />
+                    <span className="tabela-cab">
+                      VOLUME E DISTRIBUIÇÃO POR CATEGORIA
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-[#787877]">
+                    {metricas.totalClassificadas} chamados classificados
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {metricas.porCategoria.map((item) => (
+                    <div
+                      key={item.categoria}
+                      className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-4 flex flex-col justify-between space-y-3"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#18191A]">
+                          {item.categoria}
+                        </span>
+                        <span className="chip chip-neutro text-[11px] py-0.5 px-2 font-mono">
+                          {item.pct}%
+                        </span>
+                      </div>
+
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-3xl font-extrabold text-[#18191A]">
+                          {item.count}
+                        </span>
+                        <span className="text-xs text-[#787877]">
+                          atendimentos
+                        </span>
+                      </div>
+
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-[#D8D5CE]">
+                        <div
+                          className="h-full bg-[#0E4D52] transition-all duration-300"
+                          style={{ width: `${item.pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Balanço de Sentimento e Resolução (4 Colunas) */}
+              <div className="lg:col-span-4 cartao p-6 space-y-5 flex flex-col justify-between">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#D8D5CE] pb-3.5">
+                    <span className="tabela-cab">
+                      TERMÔMETRO DE SENTIMENTO
+                    </span>
+                    <span className="text-xs font-mono text-[#787877]">
+                      Clientes
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="alerta-sucesso p-3.5 flex items-center justify-between">
+                      <div>
+                        <span className="block text-xs font-bold">
+                          Sentimento Positivo
+                        </span>
+                        <span className="text-[11px] opacity-85">
+                          Elogios e satisfação
+                        </span>
+                      </div>
+                      <span className="text-xl font-extrabold">
+                        {metricas.sentPositivo}
+                      </span>
+                    </div>
+
+                    <div className="rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] p-3.5 flex items-center justify-between text-[#18191A]">
+                      <div>
+                        <span className="block text-xs font-bold">
+                          Sentimento Neutro
+                        </span>
+                        <span className="text-[11px] text-[#787877]">
+                          Dúvidas e solicitações comuns
+                        </span>
+                      </div>
+                      <span className="text-xl font-extrabold">
+                        {metricas.sentNeutro}
+                      </span>
+                    </div>
+
+                    <div className="alerta-erro p-3.5 flex items-center justify-between">
+                      <div>
+                        <span className="block text-xs font-bold">
+                          Sentimento Negativo
+                        </span>
+                        <span className="text-[11px] opacity-85">
+                          Reclamações e risco de atrito
+                        </span>
+                      </div>
+                      <span className="text-xl font-extrabold">
+                        {metricas.sentNegativo}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-[#D8D5CE] pt-4 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-[#3D3E40]">
+                    Exportar dados consolidados:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleExportarCSV}
+                    disabled={mensagens.length === 0}
+                    className="btn btn-principal py-2 px-4 text-xs"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Baixar CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* =======================================================================
+            ABA 3: CONFIGURAÇÕES (TOM DA EMPRESA, PROVEDOR DE IA E CHAVE DE API)
+           ======================================================================= */}
+        {abaAtiva === "configuracoes" && (
+          <section className="cartao p-6 sm:p-8 space-y-6 animate-in fade-in duration-150">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D8D5CE] pb-4">
+              <div>
+                <span className="tabela-cab flex items-center gap-2">
+                  <SlidersHorizontal className="h-4 w-4 text-[#0E4D52]" />
+                  CONFIGURAÇÕES DO ESTABELECIMENTO & MOTOR DE IA
+                </span>
+                <p className="text-xs text-[#787877] mt-1">
+                  Personalize o tom de voz utilizado pela inteligência
+                  artificial nas respostas e escolha o provedor de LLM.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setAbaAtiva("triagem")}
+                className="btn btn-principal py-2 px-5 text-xs"
+              >
+                <Check className="h-3.5 w-3.5" />
+                Salvar e Voltar para a Fila
+              </button>
+            </div>
+
+            {/* Escolha Rápida de Modelos de Tom */}
+            <div className="space-y-3">
+              <span className="tabela-cab block">
+                1. MODELOS PREDEFINIDOS DE TOM DA EMPRESA
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {PRESETS_PERSONALIDADE.map((preset) => {
+                  const ativo = tomEmpresa === preset.valor;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setTomEmpresa(preset.valor)}
+                      className={`text-left rounded-[8px] p-4 border transition-all flex flex-col justify-between gap-2 ${
+                        ativo
+                          ? "border-[#0E4D52] ring-1 ring-[#0E4D52] bg-[#FAF9F5]"
+                          : "border-[#D8D5CE] bg-[#EFECE6] hover:bg-[#E4E1DA]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-[#18191A]">
+                          {preset.rotulo}
+                        </span>
+                        {ativo && (
+                          <span className="chip chip-ativo text-[10px] py-0 px-2">
+                            Ativo
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-[#3D3E40] leading-relaxed">
+                        {preset.valor}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Campo Editável do Prompt de Tom */}
+            <div className="space-y-2">
+              <label
+                htmlFor="input-tom-empresa"
+                className="tabela-cab block"
+              >
+                2. INSTRUÇÃO PERSONALIZADA DE TOM DE VOZ (ENVIADA NO PROMPT DA IA)
+              </label>
+              <textarea
+                id="input-tom-empresa"
+                rows={3}
+                value={tomEmpresa}
+                onChange={(e) => setTomEmpresa(e.target.value)}
+                placeholder="Descreva como a IA deve se comunicar com os clientes do seu estabelecimento..."
+                className="campo text-sm leading-relaxed"
+              />
+            </div>
+
+            {/* Seleção do Provedor de IA e Chave de API */}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-t border-[#D8D5CE] pt-6">
+              <div className="lg:col-span-5 space-y-2">
+                <label
+                  htmlFor="select-provedor-ia"
+                  className="tabela-cab block"
+                >
+                  3. PROVEDOR DE INTELIGÊNCIA ARTIFICIAL (LLM)
+                </label>
+                <select
+                  id="select-provedor-ia"
+                  value={provedorIA}
+                  onChange={(e) =>
+                    setProvedorIA(e.target.value as ProvedorIA)
+                  }
+                  className="campo py-2.5 text-xs font-bold"
+                >
+                  <option value="anthropic">
+                    Anthropic — Claude Sonnet 4 (Recomendado)
+                  </option>
+                  <option value="openai">OpenAI — ChatGPT (GPT-4o Mini)</option>
+                  <option value="gemini">
+                    Google — Gemini 2.5 Flash
+                  </option>
+                  <option value="groq">
+                    Groq — Llama 3.3 70B (Alta Velocidade)
+                  </option>
+                </select>
+                <p className="text-[11px] text-[#787877]">
+                  O sistema adapta automaticamente o formato da requisição para
+                  a API escolhida.
+                </p>
+              </div>
+
+              <div className="lg:col-span-7 space-y-2">
+                <label
+                  htmlFor="input-api-key"
+                  className="tabela-cab flex items-center gap-1.5"
+                >
+                  <KeyRound className="h-3.5 w-3.5 text-[#0E4D52]" />
+                  4. CHAVE DE ACESSO DA API ({INFO_PROVEDORES[provedorIA].envVar})
+                </label>
+                <input
+                  id="input-api-key"
+                  type="password"
+                  value={apiKeyCustom}
+                  onChange={(e) => setApiKeyCustom(e.target.value)}
+                  placeholder={INFO_PROVEDORES[provedorIA].placeholderKey}
+                  className="campo py-2.5 font-mono text-xs"
+                />
+                <p className="text-[11px] text-[#787877]">
+                  Se deixado em branco, o aplicativo utiliza a variável do
+                  servidor (<code>.env.local</code>) ou o Modo Demonstração
+                  Zero-Config.
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* MODAL PARA ADICIONAR MENSAGEM */}
