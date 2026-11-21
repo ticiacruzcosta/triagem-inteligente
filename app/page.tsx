@@ -138,16 +138,13 @@ export default function PaginaTriagemInteligente() {
   const lockCarregamentoRef = useRef<boolean>(false);
   const painelDetalheRef = useRef<HTMLDivElement | null>(null);
 
-  // Selecionar mensagem na lista e rolar suavemente até o painel de resposta quando estiver no celular
+  const [modalDetalheMobile, setModalDetalheMobile] = useState<boolean>(false);
+
+  // Selecionar mensagem na lista (no celular abre uma gaveta/modal dedicada de tela cheia para leitura perfeita)
   const handleSelecionarMensagem = (id: string) => {
     setIdSelecionado(id);
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
-      setTimeout(() => {
-        painelDetalheRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "start",
-        });
-      }, 60);
+      setModalDetalheMobile(true);
     }
   };
 
@@ -635,17 +632,19 @@ export default function PaginaTriagemInteligente() {
       );
       const itemAlterado = atualizadas.find((m) => m.id === id);
 
-      // Se acabou de marcar como resolvido e não estamos na aba "Resolvidos", avança para o próximo da fila
+      // Se acabou de marcar como resolvido e não estamos na aba "Resolvidos", avança para o próximo da fila (e fecha modal mobile)
       if (itemAlterado?.resolvido && filtroStatus !== "resolvidos") {
         const proximoPendente = atualizadas.find(
           (m) => !m.resolvido && m.id !== id
         );
         setIdSelecionado(proximoPendente ? proximoPendente.id : null);
+        setModalDetalheMobile(false);
       } else if (!itemAlterado?.resolvido && filtroStatus === "resolvidos") {
         const proximoResolvido = atualizadas.find(
           (m) => m.resolvido && m.id !== id
         );
         setIdSelecionado(proximoResolvido ? proximoResolvido.id : null);
+        setModalDetalheMobile(false);
       }
 
       return atualizadas;
@@ -1018,8 +1017,8 @@ export default function PaginaTriagemInteligente() {
               )}
             </div>
 
-            {/* Card Unificado da Esquerda */}
-            <div className="cartao p-3.5 sm:p-4 flex flex-col max-h-[440px] lg:max-h-[580px]">
+            {/* Card Unificado da Esquerda (Sem rolagem interna presa no celular; rolagem interna só no Desktop lg:) */}
+            <div className="cartao p-3.5 sm:p-4 flex flex-col lg:max-h-[580px]">
               {/* Topo Fixo: Busca + Chips de Status + Seletores */}
               <div className="space-y-3 border-b border-[#D8D5CE] pb-3.5 shrink-0">
                 <div className="relative">
@@ -1033,8 +1032,8 @@ export default function PaginaTriagemInteligente() {
                   <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#787877]" />
                 </div>
 
-                {/* Chips de Status integrados diretamente na Caixa de Entrada */}
-                <div className="flex flex-wrap items-center gap-1.5">
+                {/* Chips de Status em linha única com rolagem horizontal suave no celular */}
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                   {[
                     { id: "todos", label: "Pendentes" },
                     { id: "escalar", label: "Definir Responsável" },
@@ -1055,7 +1054,7 @@ export default function PaginaTriagemInteligente() {
                             | "escalar"
                         )
                       }
-                      className={`chip text-[11px] py-0.5 px-2.5 ${
+                      className={`chip text-[11px] py-1 px-2.5 whitespace-nowrap shrink-0 ${
                         filtroStatus === st.id ? "chip-ativo" : "chip-neutro"
                       }`}
                     >
@@ -1101,8 +1100,8 @@ export default function PaginaTriagemInteligente() {
                 </div>
               </div>
 
-              {/* Lista Rolável com Scrollbar Editorial Fina */}
-              <div className="scroll-editorial flex-1 overflow-y-auto space-y-2.5 pt-3 pr-1.5">
+              {/* Lista de Chamados: Rolagem natural da página no celular e rolagem interna no Desktop */}
+              <div className="scroll-editorial flex-1 lg:overflow-y-auto space-y-2.5 pt-3 lg:pr-1.5">
                 {mensagensFiltradasEOrdenadas.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
                     <p className="text-sm font-bold text-[#18191A]">
@@ -1144,21 +1143,21 @@ export default function PaginaTriagemInteligente() {
                             : "border-[#D8D5CE] bg-[#F5F3EE] hover:bg-[#EFECE6]"
                         } ${msg.resolvido ? "opacity-60" : ""}`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-sm text-[#18191A]">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                            <span className="font-bold text-sm text-[#18191A] truncate">
                               {msg.nome}
                             </span>
-                            <span className="rounded-[4px] bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40]">
+                            <span className="rounded-[4px] bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40] shrink-0">
                               {msg.canal}
                             </span>
                             {msg.resolvido && (
-                              <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31]">
+                              <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31] shrink-0">
                                 ✓ Resolvido
                               </span>
                             )}
                           </div>
-                          <span className="font-mono text-[11px] text-[#787877] shrink-0">
+                          <span className="font-mono text-[11px] text-[#787877] shrink-0 pt-0.5">
                             {msg.horario}
                           </span>
                         </div>
@@ -1215,12 +1214,32 @@ export default function PaginaTriagemInteligente() {
             </div>
           </div>
 
-          {/* COLUNA DIREITA (Cols 6-12): RÓTULO NA MESMA LINHA Y + CARD DE MESMA ALTURA */}
+          {/* COLUNA DIREITA (Cols 6-12): VISÍVEL LADO A LADO NO DESKTOP, E COMO GAVETA/MODAL TELA CHEIA NO CELULAR */}
           <div
             ref={painelDetalheRef}
-            className="lg:col-span-7 flex flex-col space-y-2 scroll-mt-4"
+            className={`${
+              modalDetalheMobile && mensagemSelecionada
+                ? "fixed inset-0 z-50 bg-[#EFECE6] overflow-y-auto p-3.5 sm:p-6 flex flex-col"
+                : "hidden lg:flex"
+            } lg:static lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:col-span-7 flex-col space-y-2`}
           >
-            <div className="flex items-center justify-between h-5">
+            {/* Barra de Voltar Exclusiva para Celular */}
+            {modalDetalheMobile && mensagemSelecionada && (
+              <div className="flex lg:hidden items-center justify-between border-b border-[#D8D5CE] pb-3 mb-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setModalDetalheMobile(false)}
+                  className="btn btn-principal py-2 px-4 text-xs"
+                >
+                  ← Voltar para a Caixa de Entrada
+                </button>
+                <span className="text-[11px] font-mono text-[#787877]">
+                  Atendimento
+                </span>
+              </div>
+            )}
+
+            <div className="hidden lg:flex items-center justify-between h-5">
               <span className="tabela-cab">PAINEL DE INSPEÇÃO & RESPOSTA</span>
               {mensagemSelecionada && (
                 <span className="text-[11px] font-mono text-[#787877]">
