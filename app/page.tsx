@@ -547,6 +547,17 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
+  // Definir responsável pelo chamado
+  const handleDefinirResponsavel = (id: string, responsavel: string) => {
+    setMensagens((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, responsavel: responsavel || undefined }
+          : m
+      )
+    );
+  };
+
   // Helper de badge de urgência (Estilo ALERTS do Pin: Vermelho/Amarelo/Verde pastel)
   const renderBadgeUrgencia = (urgencia?: Urgencia) => {
     if (!urgencia) return null;
@@ -757,7 +768,7 @@ export default function PaginaTriagemInteligente() {
                 </span>
                 {metricas.qtdEscalar > 0 && (
                   <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
-                    {metricas.qtdEscalar} escalar
+                    {metricas.qtdEscalar} s/ responsável
                   </span>
                 )}
               </div>
@@ -1005,7 +1016,7 @@ export default function PaginaTriagemInteligente() {
                   {[
                     { id: "todos", label: "Todos" },
                     { id: "pendentes", label: "Pendentes" },
-                    { id: "escalar", label: "Escalar" },
+                    { id: "escalar", label: "! Definir Responsável" },
                     { id: "resolvidos", label: "Resolvidos" },
                   ].map((st) => (
                     <button
@@ -1158,10 +1169,16 @@ export default function PaginaTriagemInteligente() {
                               <span className="chip chip-neutro text-[11px] py-0.5">
                                 {msg.analise.categoria}
                               </span>
-                              {escalarHumano && (
-                                <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
-                                  ! Escalar para humano
+                              {msg.responsavel ? (
+                                <span className="rounded-full bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-[10px] font-bold">
+                                  Resp: {msg.responsavel}
                                 </span>
+                              ) : (
+                                escalarHumano && (
+                                  <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
+                                    ! Definir o Responsável
+                                  </span>
+                                )
                               )}
                             </>
                           )}
@@ -1221,17 +1238,44 @@ export default function PaginaTriagemInteligente() {
             ) : (
               <div className="cartao p-6 flex-1 lg:h-[670px] flex flex-col justify-between space-y-4 overflow-y-auto scroll-editorial">
                 <div className="space-y-4">
-                  {/* ALERTA INTEGRADO DENTRO DO TOPO DO CARD (MANTÉM O ALINHAMENTO HORIZONTAL COM A ESQUERDA) */}
+                  {/* ALERTA INTEGRADO DENTRO DO TOPO DO CARD (COM SELETOR DE RESPONSÁVEL) */}
                   {mensagemSelecionada.analise?.urgencia === "Alta" &&
                     mensagemSelecionada.analise?.sentimento === "Negativo" && (
-                      <div className="alerta-erro px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C93B3B] text-white text-[11px] font-extrabold">
-                          !
-                        </span>
-                        <span>
-                          Escalar para humano: Urgência Alta combinada com
-                          Sentimento Negativo detectada.
-                        </span>
+                      <div className="alerta-erro px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C93B3B] text-white text-[11px] font-extrabold">
+                            !
+                          </span>
+                          <span>
+                            Definir o Responsável: Urgência Alta combinada com
+                            Sentimento Negativo.
+                          </span>
+                        </div>
+
+                        <select
+                          value={mensagemSelecionada.responsavel || ""}
+                          onChange={(e) =>
+                            handleDefinirResponsavel(
+                              mensagemSelecionada.id,
+                              e.target.value
+                            )
+                          }
+                          className="rounded-[6px] bg-[#F7F5F0] border border-[#C93B3B]/50 px-2.5 py-1 text-xs font-bold text-[#18191A] focus:outline-none focus:border-[#0E4D52]"
+                        >
+                          <option value="">Selecionar responsável...</option>
+                          <option value="Supervisor Financeiro">
+                            Supervisor Financeiro
+                          </option>
+                          <option value="Engenharia Nível 2">
+                            Engenharia Nível 2
+                          </option>
+                          <option value="Especialista de Retenção">
+                            Especialista de Retenção
+                          </option>
+                          <option value="Coordenação de Suporte">
+                            Coordenação de Suporte
+                          </option>
+                        </select>
                       </div>
                     )}
 

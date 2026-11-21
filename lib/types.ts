@@ -28,6 +28,7 @@ export interface MensagemCliente {
   texto: string;
   horario: string;
   resolvido: boolean;
+  responsavel?: string;
   statusTriagem: "pendente" | "processando" | "concluido" | "erro";
   erroMensagem?: string;
   analise?: AnaliseIA;
