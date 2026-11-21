@@ -2,15 +2,15 @@
 
 # Triagem Inteligente — Plataforma de Suporte e Atendimento com IA
 
-**Classificação automatizada de chamados, análise de sentimento, priorização por SLA/urgência e geração de respostas contextualizadas com LLM (Anthropic Claude).**
+**Classificação automatizada de chamados, análise de sentimento, priorização por SLA/urgência e geração de respostas contextualizadas com suporte Multi-LLM (Anthropic Claude, OpenAI, Google Gemini e Groq).**
 
-[![Live Demo](https://img.shields.io/badge/Demonstração_Online-triagem--inteligente--ticia.vercel.app-F39200?style=for-the-badge)](https://triagem-inteligente-ticia.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Demonstração_Online-triagem--inteligente--ticia.vercel.app-0E4D52?style=for-the-badge)](https://triagem-inteligente-ticia.vercel.app)
 
 ![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript_5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
-![Anthropic Claude](https://img.shields.io/badge/Anthropic_Claude_SDK-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
+![Anthropic Claude](https://img.shields.io/badge/Multi--LLM_Ready-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
 
 </div>
 
@@ -18,15 +18,13 @@
 
 ## Visão Geral e Problema de Negócio
 
-Equipes de suporte ao cliente lidam diariamente com altos volumes de mensagens vindas de múltiplos canais (`WhatsApp`, `E-mail`, `Chat`, `Instagram` e `Telefone`). A triagem manual gera gargalos operacionais: **chamados críticos de cancelamento ou indisponibilidade técnica demoram a ser identificados**, enquanto solicitações simples consomem tempo valioso dos analistas.
+Equipes de suporte ao cliente lidam diariamente com altos volumes de mensagens vindas de múltiplos canais (`WhatsApp`, `E-mail`, `Chat`, `Instagram` e `Telefone`). A triagem manual gera gargalos operacionais: **chamados críticos de cancelamento ou indisponibilidade técnica demoram a ser identificados**, enquanto solicitações rotineiras consomem tempo valioso dos analistas.
 
-O **Triagem Inteligente** resolve esse desafio aplicando Inteligência Artificial Generativa (**Claude Sonnet 4 — Anthropic**) para processar cada mensagem recebida, entregando em segundos:
-1. **Categorização precisa** e **nível de urgência** justificado.
-2. **Detecção de sentimento** com acionamento automático de **regra de escalonamento humano** para casos críticos.
-3. **Sugestão de resposta pronta para envio**, alinhada dinamicamente ao tom de voz configurado pela empresa.
-4. **Visibilidade gerencial** com métricas de produtividade e tempo operacional economizado.
-
-> **Acesse a aplicação em produção:** [https://triagem-inteligente-ticia.vercel.app](https://triagem-inteligente-ticia.vercel.app)
+O **Triagem Inteligente** automatiza esse fluxo aplicando Inteligência Artificial Generativa para processar cada mensagem recebida e entregar em segundos:
+1. **Categorização estruturada** e **nível de urgência** com justificativa em uma frase.
+2. **Detecção de sentimento** com alerta automático (**`! Definir o Responsável`**) para atribuição imediata de casos críticos (`Urgência Alta` + `Sentimento Negativo`).
+3. **Sugestão de resposta editável**, alinhada dinamicamente ao tom de voz configurado pelo estabelecimento.
+4. **Visibilidade gerencial** com métricas de distribuição por prioridade e estimativa de tempo operacional economizado (base de 4 minutos por resposta manual).
 
 ---
 
@@ -34,27 +32,26 @@ O **Triagem Inteligente** resolve esse desafio aplicando Inteligência Artificia
 
 | Camada | Tecnologia | Papel na Arquitetura |
 | :--- | :--- | :--- |
-| **Front-end & SSR** | **Next.js 15 (App Router)** + **React 19** | Renderização híbrida, componentização reativa e rotas de API serverless. |
-| **Linguagem** | **TypeScript 5 (Strict Mode)** | Tipagem estática ponta a ponta, contratos de dados e prevenção de erros em tempo de compilação. |
-| **Estilização & UI** | **Tailwind CSS 3.4** + **Lucide Icons** | Design System responsivo, badges semânticos de urgência e acessibilidade visual. |
-| **Inteligência Artificial (Multi-LLM)** | **Anthropic Claude** + **OpenAI** + **Google Gemini** + **Groq** | Arquitetura agnóstica (*Strategy Pattern*) permitindo trocar o provedor de IA nas Configurações. |
-| **Persistência & Exportação** | **Web Storage API (`localStorage`) + CSV Blob** | Persistência local imediata de estado e geração de relatórios gerenciais em UTF-8 BOM. |
+| **Front-end & SSR** | **Next.js 15 (App Router)** + **React 19** | Interface dividida em abas dedicadas, gerenciamento reativo de estado e rotas de API serverless. |
+| **Linguagem** | **TypeScript 5 (Strict Mode)** | Tipagem estática ponta a ponta, contratos de dados e validação em tempo de compilação. |
+| **Estilização & UI** | **Tailwind CSS 3.4** + **Lucide Icons** | Design System editorial (*Clean SaaS Monochrome*), grade arquitetônica de 12 colunas e alertas semânticos. |
+| **Inteligência Artificial (Multi-LLM)** | **Anthropic Claude** + **OpenAI** + **Google Gemini** + **Groq** | Arquitetura agnóstica (*Strategy Pattern*) permitindo escolher o provedor de IA na aba **Configurações**. |
+| **Persistência & Exportação** | **Web Storage API (`localStorage`) + CSV Blob** | Persistência local com deduplicação atômica e exportação de relatórios gerenciais em UTF-8 BOM. |
 
 ---
 
-## Fluxo de Arquitetura e Validação de Dados
+## Arquitetura Multi-LLM e Validação de Dados
 
-Para garantir que a interface nunca quebre caso o modelo de linguagem retorne formatações inesperadas (como blocos Markdown ao redor do JSON), o backend implementa um pipeline de sanitização e validação estrita antes de devolver a resposta ao cliente:
+O backend utiliza o padrão **Strategy / Adapter** (`lib/llm-providers.ts`) para desacoplar a regra de negócio do fornecedor de IA, submetendo qualquer retorno a um pipeline único de sanitização e validação estrita (`lib/validation.ts`) antes de atualizar a interface:
 
 ```mermaid
 flowchart LR
-    A["Mensagem do Cliente\n(Front-end Next.js)"] -->|POST /api/triagem| B["Route Handler\n(Serverless API)"]
-    B --> C{"ANTHROPIC_API_KEY\nconfigurada?"}
-    C -->|Sim| D["Anthropic Claude API\n(System Prompt Estrito)"]
-    C -->|Não| E["Motor Fallback Determinístico\n(Zero-Config Demo Mode)"]
-    D --> F["Sanitização & Validador JSON\n(lib/validation.ts)"]
-    E --> F
-    F -->|Contrato AnaliseIA Validado| G["Dashboard & Regra de\nEscalonamento Crítico"]
+    A["Mensagem do Cliente\n(Front-end Next.js)"] -->|POST /api/triagem| B{"Chave de API\nconfigurada?"}
+    B -->|Anthropic / OpenAI\nGemini / Groq| C["Roteador Multi-LLM\n(lib/llm-providers.ts)"]
+    B -->|Sem chave| D["Motor Fallback Determinístico\n(lib/fallback.ts)"]
+    C --> E["Validador Estrito JSON\n(lib/validation.ts)"]
+    D --> E
+    E -->|Contrato AnaliseIA| F["Fila, Métricas e Regra de\nAtribuição de Responsável"]
 ```
 
 ### Contrato JSON Validado (`AnaliseIA`)
@@ -72,27 +69,20 @@ flowchart LR
 
 ---
 
-## Funcionalidades Principais
+## Funcionalidades e Organização por Abas
 
-- **Caixa de Entrada Multicanal**: Listagem com identificação do cliente, canal de origem, horário e resumo executivo gerado pela IA. Inclui adição manual de novos tickets e carregamento em lote de **15 cenários reais de suporte**.
-- **Priorização Automática e Filtros Combinados**: Ordenação automática por peso de urgência (`Alta` → `Média` → `Baixa`), busca textual em tempo real e filtros combinados por **Categoria**, **Urgência** e **Status** (*Todos*, *Pendentes*, *Escalar Humano*, *Resolvidos*).
-- **Regra de Escalonamento e Atribuição de Responsável (`Human-in-the-Loop`)**: Quando uma mensagem apresenta simultaneamente **`Urgência Alta`** e **`Sentimento Negativo`**, o sistema destaca um alerta visual imediato (**"! Definir o Responsável"**) permitindo atribuir o caso diretamente a um setor especialista (*Supervisor Financeiro*, *Engenharia Nível 2*, *Especialista de Retenção*, *Coordenação de Suporte*).
-- **Editor de Resposta com Refinamento Rápido**: Campo editável com a sugestão da IA, botões de ajuste de 1 clique (*"Mais curta"*, *"Mais formal"*, *"+ Pedir CPF/Pedido"*), cópia rápida para a área de transferência e controle de tickets resolvidos.
-- **Painel de Métricas e Exportação CSV**: Cálculo em tempo real do total de chamados, distribuição percentual (`%`) por urgência, gráficos de volume por categoria/sentimento, estimativa de **tempo economizado** (base de 4 min por atendimento manual) e exportação para planilha `.csv`.
-- **Resiliência e Tratamento de Falhas**: Processamento assíncrono em lotes controlados (*batching*) com captura de erros de rede/API e opção de reprocessamento individual ou em massa (**"Tentar de novo"**).
+A aplicação é organizada em **KPIs globais no topo** (Total de Mensagens, Urgência Alta, `%` por Urgência e Tempo Economizado) e **3 abas dedicadas**:
 
----
-
-## Decisões Técnicas de Destaque
-
-1. **Arquitetura Multi-LLM com *Strategy Pattern* (`lib/llm-providers.ts`)**:
-   - **Motivação**: Diferentes estabelecimentos possuem contratos ou preferências distintas de IA (Anthropic Claude, OpenAI ChatGPT, Google Gemini ou Groq Llama 3).
-   - **Solução**: O roteador `executarChamadaLLM()` desacopla a regra de negócio do fornecedor de IA, adaptando o payload para a API selecionada na aba **Configurações** e submetendo qualquer retorno ao mesmo validador de contrato `validarAnaliseIA()`.
-2. **Modo Demonstração *Zero-Config* (`lib/fallback.ts`)**:
-   - **Motivação**: Em avaliações técnicas de portfólio, recrutadores frequentemente testam a aplicação publicada ou clonada sem possuir uma chave paga de API.
-   - **Solução**: Quando nenhuma chave de API é detectada para o provedor ativo, a rota `/api/triagem` aciona automaticamente o motor determinístico contextual em português, garantindo **100% de testabilidade imediata**.
-3. **Validação Defensiva de Saída de LLM e Idempotência (`lib/validation.ts`)**:
-   - O módulo de validação verifica tipos, garante que `categoria`, `urgencia` e `sentimento` pertençam estritamente aos conjuntos permitidos e aplica truncamento seguro de até 15 palavras no campo `resumo`. O carregamento de exemplos possui trava síncrona atômica (`useRef` mutex) e deduplicação automática para evitar registros duplicados.
+1. **Aba `Overview & Fila`**:
+   - **Caixa de Entrada Multicanal**: Listagem ordenada automaticamente por peso de urgência (`Alta` → `Média` → `Baixa`), com busca textual em tempo real e filtros por **Status** (*Todos*, *Pendentes*, *! Definir Responsável*, *Resolvidos*), **Categoria** e **Urgência**.
+   - **Carregamento Idempotente e Atômico**: Botão **"Carregar 15 exemplos"** protegido com trava síncrona (`useRef` mutex) e chaves determinísticas que impedem duplicação de registros.
+   - **Painel de Inspeção & Resposta**: Exibe o texto original, diagnóstico completo da IA, seletor interativo para **Definir o Responsável** em chamados críticos (*Supervisor Financeiro*, *Engenharia Nível 2*, *Especialista de Retenção*, *Coordenação de Suporte*) e editor de resposta com ajustes rápidos de 1 clique (*"Mais curta"*, *"Mais formal"*, *"+ Pedir CPF"*).
+2. **Aba `Métricas & Categorias`**:
+   - Painel analítico dedicado com o volume e percentual de chamados nas 6 categorias, **Termômetro de Sentimento** (*Positivo*, *Neutro*, *Negativo*) e exportação consolidada para planilha **CSV**.
+3. **Aba `Configurações`**:
+   - Seleção rápida entre 4 modelos de **Tom da Empresa** (*Empático*, *Objetivo*, *Executivo*, *Retenção*) ou edição livre do prompt de tom de voz.
+   - Escolha do **Provedor de IA (LLM)** (*Anthropic Claude Sonnet 4*, *OpenAI GPT-4o Mini*, *Google Gemini 2.5 Flash* ou *Groq Llama 3.3 70B*) com armazenamento independente de chave de API por provedor.
+   - **Modo Demonstração *Zero-Config***: Caso nenhuma chave seja informada, o sistema opera automaticamente com o motor determinístico local (`lib/fallback.ts`), permitindo testar 100% das funcionalidades sem custo.
 
 ---
 
@@ -102,19 +92,20 @@ flowchart LR
 ├── app/
 │   ├── api/
 │   │   └── triagem/
-│   │       └── route.ts      # Endpoint POST: integração Anthropic SDK, fallback e validação
-│   ├── globals.css           # Tokens visuais, componentes utilitários e tema Tailwind
-│   ├── layout.tsx            # Metadados SEO e estrutura global da aplicação (pt-BR)
-│   └── page.tsx              # Interface principal, gerenciamento de estado, filtros e métricas
+│   │       └── route.ts        # Endpoint POST: roteamento Multi-LLM, fallback e validação
+│   ├── globals.css             # Design System Clean SaaS Monochrome e tokens de elevação
+│   ├── layout.tsx              # Metadados SEO e estrutura global da aplicação (pt-BR)
+│   └── page.tsx                # Interface em 3 abas, estado reativo, filtros e métricas
 ├── lib/
-│   ├── exemplos.ts           # Dataset com 15 mensagens realistas distribuídas por canal/categoria
-│   ├── fallback.ts           # Motor de classificação determinística para modo demonstração sem API Key
-│   ├── types.ts              # Interfaces e tipos TypeScript (MensagemCliente, AnaliseIA, etc.)
-│   └── validation.ts         # Parser e validador de schema do JSON retornado pela IA
-├── .env.example              # Modelo de variáveis de ambiente
-├── next.config.ts            # Configurações do Next.js
-├── tailwind.config.ts        # Configuração de paleta e extensões do Tailwind CSS
-└── tsconfig.json             # Configuração estrita do compilador TypeScript
+│   ├── exemplos.ts             # Dataset com 15 mensagens realistas distribuídas por canal/categoria
+│   ├── fallback.ts             # Motor determinístico para Modo Demonstração sem API Key
+│   ├── llm-providers.ts        # Strategy Pattern integrando Anthropic, OpenAI, Gemini e Groq
+│   ├── types.ts                # Interfaces e tipos TypeScript (MensagemCliente, AnaliseIA, ProvedorIA)
+│   └── validation.ts           # Sanitização e validação de schema do JSON retornado pela IA
+├── .env.example                # Modelo de variáveis de ambiente para os 4 provedores
+├── next.config.ts              # Configurações do Next.js
+├── tailwind.config.ts          # Configuração do Tailwind CSS
+└── tsconfig.json               # Configuração estrita do compilador TypeScript
 ```
 
 ---
@@ -124,35 +115,27 @@ flowchart LR
 ### Pré-requisitos
 - **Node.js** `v18.18+` ou `v20+`
 - **npm** (ou `pnpm` / `yarn`)
-- Chave da API da Anthropic (*opcional* para testes graças ao Modo Demonstração integrado)
 
 ### Passo a passo
 
-1. **Clone o repositório:**
+1. **Clone o repositório e instale as dependências:**
    ```bash
    git clone https://github.com/ticiacruzcosta/triagem-inteligente.git
    cd triagem-inteligente
-   ```
-
-2. **Instale as dependências:**
-   ```bash
    npm install
    ```
 
-3. **Configure as variáveis de ambiente (Opcional):**
+2. **Configure as variáveis de ambiente (Opcional):**
    ```bash
    cp .env.example .env.local
    ```
-   Abra o arquivo `.env.local` e insira sua chave da Anthropic:
-   ```env
-   ANTHROPIC_API_KEY=sk-ant-api03-sua-chave-aqui
-   ```
-   > *Nota: Caso não possua uma chave da Anthropic no momento, você pode rodar o projeto normalmente (ele utilizará o Modo Demonstração) ou inserir uma chave a qualquer instante clicando no botão **"Chave API"** no cabeçalho da aplicação.*
+   Abra o arquivo `.env.local` e preencha a chave do provedor que desejar utilizar (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` ou `GROQ_API_KEY`).
+   > *Nota: Se preferir testar sem chave configurada no arquivo, basta iniciar o projeto (ele usará automaticamente o Modo Demonstração) ou inserir a chave diretamente na aba **Configurações** da interface.*
 
-4. **Inicie o servidor de desenvolvimento:**
+3. **Inicie o servidor de desenvolvimento:**
    ```bash
    npm run dev
    ```
 
-5. **Acesse no navegador:**
+4. **Acesse no navegador:**
    Abra [http://localhost:3000](http://localhost:3000).
