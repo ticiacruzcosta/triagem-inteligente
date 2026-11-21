@@ -1,17 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { validarAnaliseIA } from "@/lib/validation";
+import { gerarAnaliseDemonstracao } from "@/lib/fallback";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nome, canal, texto, tomEmpresa, apiKey } = body as {
-      nome?: string;
-      canal?: string;
-      texto?: string;
-      tomEmpresa?: string;
-      apiKey?: string;
-    };
+    const { nome, canal, texto, tomEmpresa, apiKey, instrucaoRefinamento } =
+      body as {
+        nome?: string;
+        canal?: string;
+        texto?: string;
+        tomEmpresa?: string;
+        apiKey?: string;
+        instrucaoRefinamento?: string;
+      };
 
     if (!texto || !texto.trim()) {
       return NextResponse.json(
@@ -20,24 +23,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const chaveApi = (apiKey?.trim() || process.env.ANTHROPIC_API_KEY || "").trim();
+    const tomFormatado =
+      tomEmpresa?.trim() ||
+      "Empático, prestativo, profissional, claro e orientado à solução rápida.";
 
-    if (!chaveApi) {
-      return NextResponse.json(
-        {
-          erro: "Chave da API da Anthropic (ANTHROPIC_API_KEY) não configurada. Defina no arquivo .env.local ou informe no painel de configuração.",
-        },
-        { status: 401 }
+    const chaveApi = (
+      apiKey?.trim() ||
+      process.env.ANTHROPIC_API_KEY ||
+      ""
+    ).trim();
+
+    // Se não houver chave configurada (ex: recrutador testando o projeto clonado do GitHub),
+    // utiliza o motor de demonstração estruturado e valida com o mesmo schema JSON.
+    if (!chaveApi || chaveApi === "sk-ant-api03-sua-chave-aqui") {
+      await new Promise((r) => setTimeout(r, 450));
+      const analiseDemo = gerarAnaliseDemonstracao(
+        nome || "Cliente",
+        canal || "Atendimento",
+        texto,
+        tomFormatado
       );
+
+      if (instrucaoRefinamento) {
+        if (instrucaoRefinamento === "curta") {
+          analiseDemo.respostaSugerida = `Olá, ${(nome || "Cliente").split(" ")[0]}! Recebemos sua solicitação sobre ${analiseDemo.categoria.toLowerCase()} e já estamos resolvendo com prioridade pelo ${canal || "suporte"}. Retornaremos em instantes!`;
+        } else if (instrucaoRefinamento === "formal") {
+          analiseDemo.respostaSugerida = `Prezado(a) ${nome || "Cliente"},\n\nAcusamos o recebimento de sua manifestação referente a "${analiseDemo.categoria}". Informamos que as providências cabíveis já foram adotadas por nosso departamento responsável.\n\nCordialmente,\nCentral de Relacionamento com o Cliente.`;
+        } else if (instrucaoRefinamento === "dados") {
+          analiseDemo.respostaSugerida += `\n\nPara agilizar a tratativa, poderia nos confirmar por gentileza seu CPF/CNPJ ou o número do pedido correspondente?`;
+        }
+      }
+
+      const validada = validarAnaliseIA(analiseDemo);
+      return NextResponse.json({
+        analise: validada,
+        modo: "demonstracao",
+      });
     }
 
     const anthropic = new Anthropic({
       apiKey: chaveApi,
     });
 
-    const tomFormatado =
-      tomEmpresa?.trim() ||
-      "Empático, prestativo, profissional, claro e orientado à solução rápida.";
+    const complementoRefinamento = instrucaoRefinamento
+      ? `\nInstrução extra para a respostaSugerida: Ajuste a resposta para ser "${instrucaoRefinamento}".`
+      : "";
 
     const systemPrompt = `Você é um especialista em triagem inteligente de suporte ao cliente.
 Sua tarefa é analisar a mensagem recebida de um cliente e retornar EXCLUSIVAMENTE um objeto JSON válido, sem blocos de código markdown (\`\`\`json), sem texto adicional antes ou depois.
@@ -58,7 +88,7 @@ Regras obrigatórias:
 3. "justificativaUrgencia" deve ter apenas uma frase concisa em português do Brasil.
 4. "sentimento" deve ser exatamente "Positivo", "Neutro" ou "Negativo".
 5. "resumo" deve ter no máximo 15 palavras.
-6. "respostaSugerida" deve saudar o cliente pelo nome (${nome || "Cliente"}) e adotar o seguinte tom da empresa: "${tomFormatado}".
+6. "respostaSugerida" deve saudar o cliente pelo nome (${nome || "Cliente"}) e adotar o seguinte tom da empresa: "${tomFormatado}".${complementoRefinamento}
 7. Responda SOMENTE com o JSON puro.`;
 
     const userPrompt = `Cliente: ${nome || "Não informado"}
@@ -87,7 +117,6 @@ Mensagem do cliente: "${texto}"`;
     }
 
     let textoLimpo = blocoTexto.text.trim();
-    // Caso a IA inclua crases markdown apesar da instrução, extrai o bloco JSON
     const matchJson = textoLimpo.match(/\{[\s\S]*\}/);
     if (matchJson) {
       textoLimpo = matchJson[0];
@@ -107,7 +136,10 @@ Mensagem do cliente: "${texto}"`;
 
     const analiseValidada = validarAnaliseIA(jsonParseado);
 
-    return NextResponse.json({ analise: analiseValidada });
+    return NextResponse.json({
+      analise: analiseValidada,
+      modo: "anthropic",
+    });
   } catch (err: unknown) {
     const mensagemErro =
       err instanceof Error

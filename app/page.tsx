@@ -10,23 +10,28 @@ import {
 import { EXEMPLOS_MENSAGENS } from "@/lib/exemplos";
 import {
   AlertTriangle,
+  BarChart3,
   CheckCircle2,
   Clock,
   Copy,
+  Download,
   Filter,
   Inbox,
   KeyRound,
   Loader2,
   MessageSquarePlus,
   RefreshCw,
+  Search,
   Send,
   SlidersHorizontal,
   Sparkles,
   Trash2,
   UserCheck,
+  Wand2,
   X,
   Check,
   AlertCircle,
+  Info,
 } from "lucide-react";
 
 const STORAGE_KEY_MENSAGENS = "triagem_inteligente_mensagens_v1";
@@ -42,6 +47,15 @@ const PESO_URGENCIA: Record<Urgencia, number> = {
   Baixa: 1,
 };
 
+const TODAS_CATEGORIAS: Categoria[] = [
+  "Cobrança",
+  "Problema técnico",
+  "Dúvida",
+  "Cancelamento",
+  "Elogio",
+  "Outro",
+];
+
 export default function PaginaTriagemInteligente() {
   const [mensagens, setMensagens] = useState<MensagemCliente[]>([]);
   const [carregadoStorage, setCarregadoStorage] = useState(false);
@@ -51,10 +65,18 @@ export default function PaginaTriagemInteligente() {
   const [tomEmpresa, setTomEmpresa] = useState<string>(TOM_PADRAO);
   const [apiKeyCustom, setApiKeyCustom] = useState<string>("");
   const [mostrarConfigApi, setMostrarConfigApi] = useState<boolean>(false);
+  const [modoExecucao, setModoExecucao] = useState<
+    "anthropic" | "demonstracao" | null
+  >(null);
 
-  // Filtros
+  // Filtros e Busca
+  const [buscaTexto, setBuscaTexto] = useState<string>("");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("Todas");
   const [filtroUrgencia, setFiltroUrgencia] = useState<string>("Todas");
+  const [filtroStatus, setFiltroStatus] = useState<
+    "todos" | "pendentes" | "resolvidos" | "escalar"
+  >("todos");
+  const [mostrarGraficos, setMostrarGraficos] = useState<boolean>(false);
 
   // Modal Nova Mensagem
   const [modalAberto, setModalAberto] = useState<boolean>(false);
@@ -114,11 +136,12 @@ export default function PaginaTriagemInteligente() {
     localStorage.setItem(STORAGE_KEY_API, apiKeyCustom);
   }, [apiKeyCustom, carregadoStorage]);
 
-  // Função para classificar uma mensagem individual na API da Anthropic
+  // Função para classificar uma mensagem individual na API da Anthropic (ou Fallback Demo)
   const classificarMensagem = async (
     msg: MensagemCliente,
     tomAtual: string,
-    chaveAtual: string
+    chaveAtual: string,
+    instrucaoRefinamento?: string
   ) => {
     setMensagens((prev) =>
       prev.map((item) =>
@@ -138,6 +161,7 @@ export default function PaginaTriagemInteligente() {
           texto: msg.texto,
           tomEmpresa: tomAtual,
           apiKey: chaveAtual,
+          instrucaoRefinamento,
         }),
       });
 
@@ -147,6 +171,10 @@ export default function PaginaTriagemInteligente() {
         throw new Error(
           dados.erro || `Erro HTTP ${resp.status} ao classificar mensagem.`
         );
+      }
+
+      if (dados.modo) {
+        setModoExecucao(dados.modo);
       }
 
       setMensagens((prev) =>
@@ -237,7 +265,6 @@ export default function PaginaTriagemInteligente() {
       setIdSelecionado(novasMensagens[0].id);
     }
 
-    // Processa em pequenos lotes de 3 para evitar rate limit brusco e dar feedback ágil
     const tamanhoLote = 3;
     for (let i = 0; i < novasMensagens.length; i += tamanhoLote) {
       const lote = novasMensagens.slice(i, i + tamanhoLote);
@@ -264,6 +291,64 @@ export default function PaginaTriagemInteligente() {
     setCarregandoLote(false);
   };
 
+  // Exportar relatório CSV
+  const handleExportarCSV = () => {
+    if (mensagens.length === 0) return;
+
+    const cabecalho = [
+      "ID",
+      "Cliente",
+      "Canal",
+      "Horario",
+      "Status",
+      "Categoria",
+      "Urgencia",
+      "Sentimento",
+      "Escalar_Humano",
+      "Resumo",
+      "Mensagem_Original",
+      "Resposta_Sugerida",
+    ];
+
+    const escaparCSV = (val: string) =>
+      `"${(val || "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+
+    const linhas = mensagens.map((m) => {
+      const escalar =
+        m.analise?.urgencia === "Alta" && m.analise?.sentimento === "Negativo"
+          ? "SIM"
+          : "NAO";
+      return [
+        escaparCSV(m.id),
+        escaparCSV(m.nome),
+        escaparCSV(m.canal),
+        escaparCSV(m.horario),
+        escaparCSV(m.resolvido ? "Resolvido" : "Pendente"),
+        escaparCSV(m.analise?.categoria || "N/A"),
+        escaparCSV(m.analise?.urgencia || "N/A"),
+        escaparCSV(m.analise?.sentimento || "N/A"),
+        escaparCSV(escalar),
+        escaparCSV(m.analise?.resumo || ""),
+        escaparCSV(m.texto),
+        escaparCSV(m.respostaEditada ?? m.analise?.respostaSugerida ?? ""),
+      ].join(",");
+    });
+
+    const conteudoCSV = "\uFEFF" + [cabecalho.join(","), ...linhas].join("\n");
+    const blob = new Blob([conteudoCSV], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute(
+      "download",
+      `relatorio-triagem-${new Date().toISOString().slice(0, 10)}.csv`
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Limpar todas as mensagens
   const handleLimparTudo = () => {
     setMensagens([]);
@@ -271,7 +356,7 @@ export default function PaginaTriagemInteligente() {
     localStorage.removeItem(STORAGE_KEY_MENSAGENS);
   };
 
-  // Métricas do topo
+  // Métricas do topo e estatísticas por categoria
   const metricas = useMemo(() => {
     const total = mensagens.length;
     const classificadas = mensagens.filter(
@@ -313,6 +398,32 @@ export default function PaginaTriagemInteligente() {
 
     const qtdErros = mensagens.filter((m) => m.statusTriagem === "erro").length;
 
+    const qtdEscalar = classificadas.filter(
+      (m) =>
+        m.analise?.urgencia === "Alta" && m.analise?.sentimento === "Negativo"
+    ).length;
+
+    const porCategoria = TODAS_CATEGORIAS.map((cat) => {
+      const count = classificadas.filter(
+        (m) => m.analise?.categoria === cat
+      ).length;
+      const pct =
+        totalClassificadas > 0
+          ? Math.round((count / totalClassificadas) * 100)
+          : 0;
+      return { categoria: cat, count, pct };
+    });
+
+    const sentPositivo = classificadas.filter(
+      (m) => m.analise?.sentimento === "Positivo"
+    ).length;
+    const sentNeutro = classificadas.filter(
+      (m) => m.analise?.sentimento === "Neutro"
+    ).length;
+    const sentNegativo = classificadas.filter(
+      (m) => m.analise?.sentimento === "Negativo"
+    ).length;
+
     return {
       total,
       totalClassificadas,
@@ -325,18 +436,40 @@ export default function PaginaTriagemInteligente() {
       minutosEconomizados,
       tempoFormatado,
       qtdErros,
+      qtdEscalar,
+      porCategoria,
+      sentPositivo,
+      sentNeutro,
+      sentNegativo,
     };
   }, [mensagens]);
 
   // Lista filtrada e ordenada por urgência (Alta -> Média -> Baixa)
   const mensagensFiltradasEOrdenadas = useMemo(() => {
+    const termo = buscaTexto.trim().toLowerCase();
+
     return mensagens
       .filter((m) => {
+        if (termo) {
+          const bateNome = m.nome.toLowerCase().includes(termo);
+          const bateTexto = m.texto.toLowerCase().includes(termo);
+          const bateResumo =
+            m.analise?.resumo.toLowerCase().includes(termo) ?? false;
+          if (!bateNome && !bateTexto && !bateResumo) return false;
+        }
         if (filtroCategoria !== "Todas") {
           if (m.analise?.categoria !== filtroCategoria) return false;
         }
         if (filtroUrgencia !== "Todas") {
           if (m.analise?.urgencia !== filtroUrgencia) return false;
+        }
+        if (filtroStatus === "pendentes" && m.resolvido) return false;
+        if (filtroStatus === "resolvidos" && !m.resolvido) return false;
+        if (filtroStatus === "escalar") {
+          const ehEscalar =
+            m.analise?.urgencia === "Alta" &&
+            m.analise?.sentimento === "Negativo";
+          if (!ehEscalar) return false;
         }
         return true;
       })
@@ -346,7 +479,7 @@ export default function PaginaTriagemInteligente() {
         if (pesoB !== pesoA) return pesoB - pesoA;
         return 0;
       });
-  }, [mensagens, filtroCategoria, filtroUrgencia]);
+  }, [mensagens, buscaTexto, filtroCategoria, filtroUrgencia, filtroStatus]);
 
   const mensagemSelecionada = useMemo(
     () => mensagens.find((m) => m.id === idSelecionado) || null,
@@ -437,10 +570,23 @@ export default function PaginaTriagemInteligente() {
 
           <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1 text-xs font-semibold tracking-wide text-orange-100 backdrop-blur-sm">
-                <Sparkles className="h-3.5 w-3.5 text-[#F39200]" />
-                <span>MOTOR CLAUDE ANTHROPIC • ATENDIMENTO INTELIGENTE</span>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1 text-xs font-semibold tracking-wide text-orange-100 backdrop-blur-sm">
+                  <Sparkles className="h-3.5 w-3.5 text-[#F39200]" />
+                  <span>MOTOR CLAUDE ANTHROPIC • ATENDIMENTO INTELIGENTE</span>
+                </div>
+
+                {modoExecucao === "demonstracao" && (
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 border border-amber-300/40 px-3 py-1 text-xs font-semibold text-amber-200"
+                    title="Funcionando sem chave paga da Anthropic para facilitar avaliação de portfólio"
+                  >
+                    <Info className="h-3.5 w-3.5 text-amber-300" />
+                    Modo Demonstração Ativo (Zero-Config)
+                  </span>
+                )}
               </div>
+
               <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                 Triagem Inteligente de Suporte
               </h1>
@@ -451,7 +597,7 @@ export default function PaginaTriagemInteligente() {
               </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
                 onClick={() => setModalAberto(true)}
@@ -474,6 +620,34 @@ export default function PaginaTriagemInteligente() {
                 )}
                 Carregar 15 exemplos
               </button>
+
+              {mensagens.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setMostrarGraficos((v) => !v)}
+                    className={`btn border border-white/15 px-3.5 ${
+                      mostrarGraficos
+                        ? "bg-[#F39200] text-[#1A2332]"
+                        : "bg-white/10 text-white hover:bg-white/20"
+                    }`}
+                    title="Alternar gráficos de distribuição"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Análise</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportarCSV}
+                    className="btn bg-white/10 text-white hover:bg-white/20 border border-white/15 px-3.5"
+                    title="Exportar relatório em CSV"
+                  >
+                    <Download className="h-4 w-4 text-emerald-300" />
+                    <span className="hidden sm:inline">CSV</span>
+                  </button>
+                </>
+              )}
 
               <button
                 type="button"
@@ -500,7 +674,10 @@ export default function PaginaTriagemInteligente() {
                 {metricas.total}
               </p>
               <p className="mt-1 text-xs text-slate-500">
-                {metricas.totalClassificadas} analisadas pela IA
+                {metricas.totalClassificadas} analisadas •{" "}
+                <span className="font-semibold text-red-600">
+                  {metricas.qtdEscalar} p/ escalar
+                </span>
               </p>
             </div>
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1A2332]/5 text-[#1A2332]">
@@ -587,6 +764,59 @@ export default function PaginaTriagemInteligente() {
           </div>
         </section>
 
+        {/* PAINEL ANALÍTICO EXPANSÍVEL (CATEGORIAS E SENTIMENTO) */}
+        {mostrarGraficos && mensagens.length > 0 && (
+          <section className="cartao p-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <div className="lg:col-span-8 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-[#F39200]" />
+                Volume por Categoria de Atendimento
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {metricas.porCategoria.map((item) => (
+                  <div
+                    key={item.categoria}
+                    className="rounded-2xl bg-[#F4F6F9] p-3 border border-slate-200/60"
+                  >
+                    <div className="flex items-center justify-between text-xs font-bold text-[#1A2332]">
+                      <span>{item.categoria}</span>
+                      <span>
+                        {item.count} ({item.pct}%)
+                      </span>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
+                      <div
+                        className="h-full bg-[#1A2332] transition-all duration-300"
+                        style={{ width: `${item.pct}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 space-y-3 border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Termômetro de Sentimento
+              </h3>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3.5 py-2.5 text-xs font-bold text-emerald-800">
+                  <span>Positivo</span>
+                  <span>{metricas.sentPositivo} chamados</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-slate-100 px-3.5 py-2.5 text-xs font-bold text-slate-700">
+                  <span>Neutro</span>
+                  <span>{metricas.sentNeutro} chamados</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-800">
+                  <span>Negativo</span>
+                  <span>{metricas.sentNegativo} chamados</span>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* CONFIGURAÇÃO DE TOM DA EMPRESA E API KEY */}
         <section className="cartao p-5 space-y-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -615,14 +845,15 @@ export default function PaginaTriagemInteligente() {
                   className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1A2332]"
                 >
                   <KeyRound className="h-4 w-4 text-[#C2410C]" />
-                  Chave da API Anthropic (Opcional se definida no .env.local)
+                  Chave da API Anthropic (Deixe vazio para usar Modo
+                  Demonstração)
                 </label>
                 <input
                   id="campo-api-key"
                   type="password"
                   value={apiKeyCustom}
                   onChange={(e) => setApiKeyCustom(e.target.value)}
-                  placeholder="sk-ant-api03-..."
+                  placeholder="sk-ant-api03-... (opcional)"
                   className="campo font-mono"
                 />
               </div>
@@ -635,8 +866,8 @@ export default function PaginaTriagemInteligente() {
                 <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
                 <span>
                   Existem <strong>{metricas.qtdErros}</strong> mensagem(ns) com
-                  falha na classificação da API. Verifique sua chave{" "}
-                  <code>ANTHROPIC_API_KEY</code> ou tente novamente.
+                  falha na classificação da API. Verifique sua chave ou tente
+                  novamente.
                 </span>
               </div>
               <button
@@ -679,6 +910,49 @@ export default function PaginaTriagemInteligente() {
                     Limpar
                   </button>
                 )}
+              </div>
+
+              {/* Busca por texto */}
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={buscaTexto}
+                  onChange={(e) => setBuscaTexto(e.target.value)}
+                  placeholder="Buscar por cliente ou palavra-chave..."
+                  className="campo pl-9 py-2 text-xs"
+                />
+              </div>
+
+              {/* Pílulas de filtro rápido de status */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: "todos", rotulo: "Todos" },
+                  { id: "pendentes", rotulo: "Pendentes" },
+                  { id: "escalar", rotulo: "⚠️ Escalar Humano" },
+                  { id: "resolvidos", rotulo: "Resolvidos" },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() =>
+                      setFiltroStatus(
+                        tab.id as
+                          | "todos"
+                          | "pendentes"
+                          | "resolvidos"
+                          | "escalar"
+                      )
+                    }
+                    className={`rounded-full px-3 py-1 text-[11px] font-bold transition-colors ${
+                      filtroStatus === tab.id
+                        ? "bg-[#1A2332] text-white"
+                        : "bg-[#F1F3F6] text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {tab.rotulo}
+                  </button>
+                ))}
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
@@ -730,8 +1004,9 @@ export default function PaginaTriagemInteligente() {
                     Nenhuma mensagem encontrada
                   </p>
                   <p className="text-xs text-slate-400 max-w-xs mx-auto">
-                    Clique em &ldquo;Carregar 15 exemplos&rdquo; ou &ldquo;Adicionar
-                    mensagem&rdquo; no topo para iniciar a triagem inteligente.
+                    Clique em &ldquo;Carregar 15 exemplos&rdquo; ou
+                    &ldquo;Adicionar mensagem&rdquo; no topo para iniciar a
+                    triagem inteligente.
                   </p>
                 </div>
               ) : (
@@ -788,7 +1063,7 @@ export default function PaginaTriagemInteligente() {
                         {msg.statusTriagem === "processando" && (
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-[#C2410C]">
                             <Loader2 className="h-3 w-3 animate-spin" />
-                            Analisando com Claude...
+                            Analisando...
                           </span>
                         )}
 
@@ -832,9 +1107,9 @@ export default function PaginaTriagemInteligente() {
                   Selecione uma mensagem para visualizar a triagem
                 </h3>
                 <p className="text-sm text-slate-500 max-w-md mx-auto">
-                  Clique em qualquer atendimento na lista ao lado para inspecionar
-                  a análise da inteligência artificial, justificativa de
-                  urgência e editar a resposta sugerida.
+                  Clique em qualquer atendimento na lista ao lado para
+                  inspecionar a análise da inteligência artificial,
+                  justificativa de urgência e editar a resposta sugerida.
                 </p>
               </div>
             ) : (
@@ -948,8 +1223,7 @@ export default function PaginaTriagemInteligente() {
                       Classificando mensagem e gerando resposta...
                     </p>
                     <p className="text-xs text-slate-500">
-                      Consultando a API da Anthropic (Claude) em formato JSON
-                      estruturado.
+                      Processando estrutura JSON validada.
                     </p>
                   </div>
                 )}
@@ -1025,9 +1299,9 @@ export default function PaginaTriagemInteligente() {
                       </div>
                     </div>
 
-                    {/* RESPOSTA SUGERIDA EDITÁVEL */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
+                    {/* RESPOSTA SUGERIDA EDITÁVEL + REFINAMENTO RÁPIDO */}
+                    <div className="space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <label
                           htmlFor="resposta-editavel"
                           className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5"
@@ -1035,9 +1309,35 @@ export default function PaginaTriagemInteligente() {
                           <UserCheck className="h-4 w-4 text-[#F39200]" />
                           Resposta Sugerida (Editável)
                         </label>
-                        <span className="text-[11px] text-slate-400">
-                          Ajuste livremente antes de copiar
-                        </span>
+
+                        {/* Botões de Refinamento Rápido de 1 clique */}
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1 mr-1">
+                            <Wand2 className="h-3 w-3 text-[#F39200]" />
+                            Ajuste rápido:
+                          </span>
+                          {[
+                            { id: "curta", label: "Mais curta" },
+                            { id: "formal", label: "Mais formal" },
+                            { id: "dados", label: "+ Pedir CPF/Pedido" },
+                          ].map((acao) => (
+                            <button
+                              key={acao.id}
+                              type="button"
+                              onClick={() =>
+                                classificarMensagem(
+                                  mensagemSelecionada,
+                                  tomEmpresa,
+                                  apiKeyCustom,
+                                  acao.id
+                                )
+                              }
+                              className="rounded-full bg-[#F1F3F6] hover:bg-orange-100 hover:text-[#C2410C] px-2.5 py-1 text-[11px] font-semibold text-slate-600 transition-colors"
+                            >
+                              {acao.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
 
                       <textarea
