@@ -1,13 +1,13 @@
 # Triagem Inteligente — Central de Suporte com IA (Claude / Anthropic)
 
-[![Live Demo](https://img.shields.io/badge/🔗_Acessar_Demonstração_Online-triagem--inteligente.vercel.app-F39200?style=for-the-badge)](https://triagem-inteligente.vercel.app)
+[![Live Demo](https://img.shields.io/badge/🔗_Acessar_Demonstração_Online-triagem--inteligente--ticia.vercel.app-F39200?style=for-the-badge)](https://triagem-inteligente-ticia.vercel.app)
 
 ![Next.js](https://img.shields.io/badge/Next.js_15-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
 ![Anthropic Claude](https://img.shields.io/badge/Anthropic_Claude-D97757?style=for-the-badge&logo=anthropic&logoColor=white)
 
-> **Demonstração ao vivo**: [https://triagem-inteligente.vercel.app](https://triagem-inteligente.vercel.app)
+> **Demonstração ao vivo**: [https://triagem-inteligente-ticia.vercel.app](https://triagem-inteligente-ticia.vercel.app)
 
 Aplicação web full-stack desenvolvida com **Next.js (App Router)**, **TypeScript**, **Tailwind CSS** e a **API da Anthropic (Claude)** para automatizar a triagem de atendimento ao cliente. O sistema classifica cada mensagem recebida, identifica sentimento e nível de urgência, aciona regras críticas de escalonamento humano e sugere respostas personalizadas alinhadas ao tom de voz da empresa.
 
