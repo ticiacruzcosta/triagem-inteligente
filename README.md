@@ -22,7 +22,7 @@ Equipes de suporte ao cliente lidam diariamente com altos volumes de mensagens v
 
 O **Triagem Inteligente** automatiza esse fluxo aplicando Inteligência Artificial Generativa para processar cada mensagem recebida e entregar em segundos:
 1. **Categorização estruturada** e **nível de urgência** com justificativa em uma frase.
-2. **Detecção de sentimento** com alerta automático (**`! Definir o Responsável`**) para atribuição imediata de casos críticos (`Urgência Alta` + `Sentimento Negativo`).
+2. **Detecção de sentimento** com alerta automático (**`Definir o Responsável`**) para atribuição imediata de casos críticos (`Urgência Alta` + `Sentimento Negativo`).
 3. **Sugestão de resposta editável**, alinhada dinamicamente ao tom de voz configurado pelo estabelecimento.
 4. **Visibilidade gerencial** com métricas de distribuição por prioridade e estimativa de tempo operacional economizado (base de 4 minutos por resposta manual).
 
@@ -74,7 +74,7 @@ flowchart LR
 A aplicação é organizada em **KPIs globais no topo** (Total de Mensagens, Urgência Alta, `%` por Urgência e Tempo Economizado) e **3 abas dedicadas**:
 
 1. **Aba `Overview & Fila`**:
-   - **Caixa de Entrada Multicanal**: Listagem ordenada automaticamente por peso de urgência (`Alta` → `Média` → `Baixa`), com busca textual em tempo real e filtros por **Status** (*Todos*, *Pendentes*, *! Definir Responsável*, *Resolvidos*), **Categoria** e **Urgência**.
+   - **Caixa de Entrada Multicanal**: Listagem ordenada automaticamente por peso de urgência (`Alta` → `Média` → `Baixa`), com busca textual em tempo real e filtros por **Status** (*Todos*, *Pendentes*, *Definir Responsável*, *Resolvidos*), **Categoria** e **Urgência**.
    - **Carregamento Idempotente e Atômico**: Botão **"Carregar 15 exemplos"** protegido com trava síncrona (`useRef` mutex) e chaves determinísticas que impedem duplicação de registros.
    - **Painel de Inspeção & Resposta**: Exibe o texto original, diagnóstico completo da IA, seletor interativo para **Definir o Responsável** em chamados críticos (*Supervisor Financeiro*, *Engenharia Nível 2*, *Especialista de Retenção*, *Coordenação de Suporte*) e editor de resposta com ajustes rápidos de 1 clique (*"Mais curta"*, *"Mais formal"*, *"+ Pedir CPF"*).
 2. **Aba `Métricas & Categorias`**:

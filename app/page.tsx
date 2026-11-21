@@ -1021,7 +1021,7 @@ export default function PaginaTriagemInteligente() {
                   {[
                     { id: "todos", label: "Todos" },
                     { id: "pendentes", label: "Pendentes" },
-                    { id: "escalar", label: "! Definir Responsável" },
+                    { id: "escalar", label: "Definir Responsável" },
                     { id: "resolvidos", label: "Resolvidos" },
                   ].map((st) => (
                     <button
@@ -1181,7 +1181,7 @@ export default function PaginaTriagemInteligente() {
                               ) : (
                                 escalarHumano && (
                                   <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
-                                    ! Definir o Responsável
+                                    Definir o Responsável
                                   </span>
                                 )
                               )}
