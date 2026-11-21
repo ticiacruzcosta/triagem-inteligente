@@ -647,13 +647,19 @@ export default function PaginaTriagemInteligente() {
       <main className="relative z-10 w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (TOPO COM TOPO, BASE COM BASE) */}
         <header className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-6 items-stretch">
-          {/* Esquerda (Cols 1-6): Título Display */}
-          <div className="lg:col-span-6 flex flex-col justify-between">
+          {/* Esquerda (Cols 1-6): Título Display + Status da API quando conectada */}
+          <div className="lg:col-span-6 flex flex-col justify-between space-y-2">
             <h1 className="text-4xl sm:text-[56px] font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.94]">
               Triagem
               <br />
               Inteligente
             </h1>
+            { (apiKeyCustom.trim() || modoExecucao === "anthropic") && (
+              <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-[#0E4D52]">
+                <span className="h-2 w-2 rounded-full bg-[#1E8E4E]" />
+                <span>API Anthropic Conectada (Claude Sonnet 4)</span>
+              </div>
+            )}
           </div>
 
           {/* Direita (Cols 7-12): Botões alinhados no Topo + Tabs alinhadas na Base */}
