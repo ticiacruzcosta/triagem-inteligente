@@ -838,9 +838,6 @@ export default function PaginaTriagemInteligente() {
         <section className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="tabela-cab">MÉTRICAS & ELEVATION TOKENS</span>
-            <span className="text-[11px] font-mono text-[#787877]">
-              SLA Base: 4 min / resposta
-            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
