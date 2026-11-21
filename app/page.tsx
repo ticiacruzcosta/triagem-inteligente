@@ -809,7 +809,7 @@ export default function PaginaTriagemInteligente() {
             {/* TABS MINIMALISTAS */}
             <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
               {[
-                { id: "triagem", label: "Overview & Fila" },
+                { id: "triagem", label: "Fila de Atendimento" },
                 { id: "analitico", label: "Métricas & Categorias" },
               ].map((tab) => {
                 const ativo = abaAtiva === tab.id;
@@ -835,17 +835,12 @@ export default function PaginaTriagemInteligente() {
         </header>
 
         {/* 2. MÉTRICAS NO TOPO (2x2 COMPACTO NO CELULAR, 4 COLUNAS NO DESKTOP) */}
-        <section className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="tabela-cab">MÉTRICAS & ELEVATION TOKENS</span>
-          </div>
-
+        <section>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
             {/* Card 1 (Cols 1-3): Primary Action Token Style */}
             <div className="lg:col-span-3 rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-3.5 sm:p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-[#DCE9F2]/80 uppercase tracking-wider">
                 <span className="truncate">Total na Fila</span>
-                <span className="font-mono hidden sm:inline">Level 1</span>
               </div>
               <div className="my-1 flex items-baseline justify-between gap-1">
                 <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
@@ -954,8 +949,7 @@ export default function PaginaTriagemInteligente() {
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0" />
               <span>
-                Error: Falha ao classificar {metricas.qtdErros} mensagem(ns) na
-                API.
+                Falha ao classificar {metricas.qtdErros} mensagem(ns) na API.
               </span>
             </div>
             <button
@@ -1287,7 +1281,7 @@ export default function PaginaTriagemInteligente() {
                     <div className="alerta-sucesso px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
                       <CheckCircle2 className="h-4 w-4 text-[#1E8E4E] shrink-0" />
                       <span>
-                        Success: Este atendimento foi marcado como resolvido.
+                        Atendimento concluído e marcado como resolvido.
                       </span>
                     </div>
                   )}
@@ -1297,7 +1291,7 @@ export default function PaginaTriagemInteligente() {
                       <div className="alerta-aviso px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
                         <AlertTriangle className="h-4 w-4 text-[#D99B16] shrink-0" />
                         <span>
-                          Warning: Prioridade Média — responder dentro da janela
+                          Prioridade Média — responder dentro da janela
                           operacional do dia.
                         </span>
                       </div>
@@ -1308,8 +1302,8 @@ export default function PaginaTriagemInteligente() {
                       <div className="alerta-info px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
                         <Info className="h-4 w-4 text-[#1976D2] shrink-0" />
                         <span>
-                          Info: Chamado de baixa urgência — resposta automática
-                          pronta para envio.
+                          Baixa Urgência — resposta automática pronta para
+                          envio.
                         </span>
                       </div>
                     )}
@@ -1407,7 +1401,7 @@ export default function PaginaTriagemInteligente() {
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <span className="tabela-cab">
-                          ANÁLISE ESTRUTURADA (JSON VALIDADO)
+                          DIAGNÓSTICO DA TRIAGEM
                         </span>
                         <div className="flex flex-wrap items-center gap-2">
                           {renderBadgeUrgencia(
@@ -1452,7 +1446,7 @@ export default function PaginaTriagemInteligente() {
                             htmlFor="campo-resposta-ia"
                             className="tabela-cab"
                           >
-                            RESPOSTA SUGERIDA (CAMPO EDITÁVEL)
+                            RESPOSTA SUGERIDA
                           </label>
 
                           <div className="flex flex-wrap items-center gap-1.5">
