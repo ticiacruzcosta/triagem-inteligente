@@ -597,8 +597,8 @@ export default function PaginaTriagemInteligente() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden">
-      {/* GRADE ARQUITETÔNICA REAL DE 12 COLUNAS ALINHADA COM AS RÉGUAS E OS CARDS */}
-      <div className="pointer-events-none fixed inset-0 z-0 mx-auto max-w-[1360px] px-4 sm:px-8">
+      {/* GRADE ARQUITETÔNICA REAL DE 12 COLUNAS EM TELA CHEIA (FULL-WIDTH) */}
+      <div className="pointer-events-none fixed inset-0 z-0 w-full px-4 sm:px-6 lg:px-8">
         <div className="grid h-full grid-cols-12 border-x border-[#D8D5CE]/55">
           {Array.from({ length: 12 }).map((_, i) => (
             <div
@@ -610,7 +610,7 @@ export default function PaginaTriagemInteligente() {
       </div>
 
       {/* RÉGUA ARQUITETÔNICA SUPERIOR (1 a 12) */}
-      <div className="relative z-10 mx-auto w-full max-w-[1360px] px-4 sm:px-8 pt-3 select-none">
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-3 select-none">
         <div className="grid grid-cols-12 border-b border-[#D8D5CE] pb-1 text-[10px] font-mono text-[#787877]">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between px-1.5">
@@ -621,8 +621,8 @@ export default function PaginaTriagemInteligente() {
         </div>
       </div>
 
-      {/* CONTAINER PRINCIPAL EDITORIAL */}
-      <main className="relative z-10 mx-auto w-full max-w-[1360px] flex-1 px-4 py-6 sm:px-8 space-y-6">
+      {/* CONTAINER PRINCIPAL EDITORIAL EM LARGURA TOTAL */}
+      <main className="relative z-10 w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (TOPO COM TOPO, BASE COM BASE) */}
         <header className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-6 items-stretch">
           {/* Esquerda (Cols 1-6): Título Display + Subtítulo na base */}
@@ -1506,7 +1506,7 @@ export default function PaginaTriagemInteligente() {
       </main>
 
       {/* RÉGUA ARQUITETÔNICA INFERIOR (0 a 11) */}
-      <footer className="relative z-10 mx-auto w-full max-w-[1360px] px-4 sm:px-8 pb-4 pt-4 select-none">
+      <footer className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-4 pt-4 select-none">
         <div className="grid grid-cols-12 border-t border-[#D8D5CE] pt-1.5 text-[10px] font-mono text-[#787877]">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="flex items-center justify-between px-1.5">
