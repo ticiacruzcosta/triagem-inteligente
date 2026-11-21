@@ -806,12 +806,11 @@ export default function PaginaTriagemInteligente() {
               </button>
             </div>
 
-            {/* TABS MINIMALISTAS COM SCROLL HORIZONTAL SUAVE NO CELULAR */}
-            <div className="flex items-center gap-4 sm:gap-6 border-b border-[#D8D5CE] w-full lg:w-auto overflow-x-auto no-scrollbar">
+            {/* TABS MINIMALISTAS */}
+            <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
               {[
                 { id: "triagem", label: "Overview & Fila" },
                 { id: "analitico", label: "Métricas & Categorias" },
-                { id: "configuracoes", label: "Configurações" },
               ].map((tab) => {
                 const ativo = abaAtiva === tab.id;
                 return (
@@ -819,9 +818,7 @@ export default function PaginaTriagemInteligente() {
                     key={tab.id}
                     type="button"
                     onClick={() =>
-                      setAbaAtiva(
-                        tab.id as "triagem" | "analitico" | "configuracoes"
-                      )
+                      setAbaAtiva(tab.id as "triagem" | "analitico")
                     }
                     className={`pb-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px flex-1 sm:flex-initial text-center ${
                       ativo
