@@ -37,7 +37,7 @@ O **Triagem Inteligente** resolve esse desafio aplicando Inteligência Artificia
 | **Front-end & SSR** | **Next.js 15 (App Router)** + **React 19** | Renderização híbrida, componentização reativa e rotas de API serverless. |
 | **Linguagem** | **TypeScript 5 (Strict Mode)** | Tipagem estática ponta a ponta, contratos de dados e prevenção de erros em tempo de compilação. |
 | **Estilização & UI** | **Tailwind CSS 3.4** + **Lucide Icons** | Design System responsivo, badges semânticos de urgência e acessibilidade visual. |
-| **Inteligência Artificial** | **Anthropic SDK (`@anthropic-ai/sdk`)** | Integração com o modelo `claude-sonnet-4-20250514` via *System Prompts* estruturados. |
+| **Inteligência Artificial (Multi-LLM)** | **Anthropic Claude** + **OpenAI** + **Google Gemini** + **Groq** | Arquitetura agnóstica (*Strategy Pattern*) permitindo trocar o provedor de IA nas Configurações. |
 | **Persistência & Exportação** | **Web Storage API (`localStorage`) + CSV Blob** | Persistência local imediata de estado e geração de relatórios gerenciais em UTF-8 BOM. |
 
 ---
@@ -76,7 +76,7 @@ flowchart LR
 
 - **Caixa de Entrada Multicanal**: Listagem com identificação do cliente, canal de origem, horário e resumo executivo gerado pela IA. Inclui adição manual de novos tickets e carregamento em lote de **15 cenários reais de suporte**.
 - **Priorização Automática e Filtros Combinados**: Ordenação automática por peso de urgência (`Alta` → `Média` → `Baixa`), busca textual em tempo real e filtros combinados por **Categoria**, **Urgência** e **Status** (*Todos*, *Pendentes*, *Escalar Humano*, *Resolvidos*).
-- **Regra de Escalonamento Crítico (`Human-in-the-Loop`)**: Quando uma mensagem apresenta simultaneamente **`Urgência Alta`** e **`Sentimento Negativo`**, o sistema destaca um alerta visual imediato (**"Escalar para humano"**) para intervenção de um especialista sênior.
+- **Regra de Escalonamento e Atribuição de Responsável (`Human-in-the-Loop`)**: Quando uma mensagem apresenta simultaneamente **`Urgência Alta`** e **`Sentimento Negativo`**, o sistema destaca um alerta visual imediato (**"! Definir o Responsável"**) permitindo atribuir o caso diretamente a um setor especialista (*Supervisor Financeiro*, *Engenharia Nível 2*, *Especialista de Retenção*, *Coordenação de Suporte*).
 - **Editor de Resposta com Refinamento Rápido**: Campo editável com a sugestão da IA, botões de ajuste de 1 clique (*"Mais curta"*, *"Mais formal"*, *"+ Pedir CPF/Pedido"*), cópia rápida para a área de transferência e controle de tickets resolvidos.
 - **Painel de Métricas e Exportação CSV**: Cálculo em tempo real do total de chamados, distribuição percentual (`%`) por urgência, gráficos de volume por categoria/sentimento, estimativa de **tempo economizado** (base de 4 min por atendimento manual) e exportação para planilha `.csv`.
 - **Resiliência e Tratamento de Falhas**: Processamento assíncrono em lotes controlados (*batching*) com captura de erros de rede/API e opção de reprocessamento individual ou em massa (**"Tentar de novo"**).
@@ -85,13 +85,14 @@ flowchart LR
 
 ## Decisões Técnicas de Destaque
 
-1. **Arquitetura *Zero-Config Demo Fallback* (`lib/fallback.ts`)**:
-   - **Motivação**: Em avaliações técnicas de portfólio, recrutadores frequentemente testam a aplicação publicada ou clonada sem possuir uma chave paga da Anthropic (`ANTHROPIC_API_KEY`).
-   - **Solução**: Quando nenhuma chave de API é detectada, a rota `/api/triagem` aciona automaticamente um motor heurístico contextual em português que analisa a mensagem e retorna objetos submetidos ao mesmo validador `validarAnaliseIA()`. Isso garante **100% de testabilidade imediata**, mantendo a integração oficial com a Anthropic pronta para uso via variável de ambiente ou entrada direta na interface.
-2. **Validação Defensiva de Saída de LLM (`lib/validation.ts`)**:
-   - LLMs podem ocasionalmente extrapolar limites de palavras ou retornar valores fora do `enum` esperado. O módulo de validação verifica tipos, garante que `categoria`, `urgencia` e `sentimento` pertençam estritamente aos conjuntos permitidos e aplica truncamento seguro de até 15 palavras no campo `resumo`.
-3. **Controle de Concorrência no Front-end**:
-   - Ao carregar os 15 exemplos simultaneamente, as requisições são disparadas em lotes controlados (*chunks* de 3 chamadas paralelas), evitando *Rate Limiting* (HTTP 429) na API e atualizando a interface progressivamente.
+1. **Arquitetura Multi-LLM com *Strategy Pattern* (`lib/llm-providers.ts`)**:
+   - **Motivação**: Diferentes estabelecimentos possuem contratos ou preferências distintas de IA (Anthropic Claude, OpenAI ChatGPT, Google Gemini ou Groq Llama 3).
+   - **Solução**: O roteador `executarChamadaLLM()` desacopla a regra de negócio do fornecedor de IA, adaptando o payload para a API selecionada na aba **Configurações** e submetendo qualquer retorno ao mesmo validador de contrato `validarAnaliseIA()`.
+2. **Modo Demonstração *Zero-Config* (`lib/fallback.ts`)**:
+   - **Motivação**: Em avaliações técnicas de portfólio, recrutadores frequentemente testam a aplicação publicada ou clonada sem possuir uma chave paga de API.
+   - **Solução**: Quando nenhuma chave de API é detectada para o provedor ativo, a rota `/api/triagem` aciona automaticamente o motor determinístico contextual em português, garantindo **100% de testabilidade imediata**.
+3. **Validação Defensiva de Saída de LLM e Idempotência (`lib/validation.ts`)**:
+   - O módulo de validação verifica tipos, garante que `categoria`, `urgencia` e `sentimento` pertençam estritamente aos conjuntos permitidos e aplica truncamento seguro de até 15 palavras no campo `resumo`. O carregamento de exemplos possui trava síncrona atômica (`useRef` mutex) e deduplicação automática para evitar registros duplicados.
 
 ---
 

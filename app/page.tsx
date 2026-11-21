@@ -34,7 +34,8 @@ import {
 
 const STORAGE_KEY_MENSAGENS = "triagem_inteligente_mensagens_v1";
 const STORAGE_KEY_TOM = "triagem_inteligente_tom_v1";
-const STORAGE_KEY_API = "triagem_inteligente_apikey_v1";
+const STORAGE_KEY_APIS = "triagem_inteligente_apikeys_map_v1";
+const STORAGE_KEY_API_LEGADO = "triagem_inteligente_apikey_v1";
 const STORAGE_KEY_PROVEDOR = "triagem_inteligente_provedor_v1";
 
 interface PresetPersonalidade {
@@ -90,14 +91,28 @@ export default function PaginaTriagemInteligente() {
   const [carregadoStorage, setCarregadoStorage] = useState(false);
   const [idSelecionado, setIdSelecionado] = useState<string | null>(null);
 
-  // Configurações de Tom, Provedor de IA e API Key
+  // Configurações de Tom, Provedor de IA e Mapa de Chaves de API por Provedor
   const [tomEmpresa, setTomEmpresa] = useState<string>(
     PRESETS_PERSONALIDADE[0].valor
   );
   const [provedorIA, setProvedorIA] = useState<ProvedorIA>("anthropic");
-  const [apiKeyCustom, setApiKeyCustom] = useState<string>("");
-  const [mostrarConfigApi, setMostrarConfigApi] = useState<boolean>(false);
+  const [chavesPorProvedor, setChavesPorProvedor] = useState<
+    Record<ProvedorIA, string>
+  >({
+    anthropic: "",
+    openai: "",
+    gemini: "",
+    groq: "",
+  });
   const [modoExecucao, setModoExecucao] = useState<string | null>(null);
+
+  const apiKeyCustom = chavesPorProvedor[provedorIA] || "";
+  const setApiKeyCustom = (novaChave: string) => {
+    setChavesPorProvedor((prev) => ({
+      ...prev,
+      [provedorIA]: novaChave,
+    }));
+  };
 
   // Filtros e Tabs
   const [buscaTexto, setBuscaTexto] = useState<string>("");
@@ -146,8 +161,18 @@ export default function PaginaTriagemInteligente() {
       const tomSalvo = localStorage.getItem(STORAGE_KEY_TOM);
       if (tomSalvo) setTomEmpresa(tomSalvo);
 
-      const apiSalva = localStorage.getItem(STORAGE_KEY_API);
-      if (apiSalva) setApiKeyCustom(apiSalva);
+      const mapaApisSalvo = localStorage.getItem(STORAGE_KEY_APIS);
+      if (mapaApisSalvo) {
+        const parsedMapa = JSON.parse(mapaApisSalvo);
+        if (parsedMapa && typeof parsedMapa === "object") {
+          setChavesPorProvedor((prev) => ({ ...prev, ...parsedMapa }));
+        }
+      } else {
+        const apiLegada = localStorage.getItem(STORAGE_KEY_API_LEGADO);
+        if (apiLegada) {
+          setChavesPorProvedor((prev) => ({ ...prev, anthropic: apiLegada }));
+        }
+      }
 
       const provedorSalvo = localStorage.getItem(
         STORAGE_KEY_PROVEDOR
@@ -178,11 +203,11 @@ export default function PaginaTriagemInteligente() {
     localStorage.setItem(STORAGE_KEY_TOM, tomEmpresa);
   }, [tomEmpresa, carregadoStorage]);
 
-  // Salvar API key opcional
+  // Salvar mapa de API keys por provedor
   useEffect(() => {
     if (!carregadoStorage) return;
-    localStorage.setItem(STORAGE_KEY_API, apiKeyCustom);
-  }, [apiKeyCustom, carregadoStorage]);
+    localStorage.setItem(STORAGE_KEY_APIS, JSON.stringify(chavesPorProvedor));
+  }, [chavesPorProvedor, carregadoStorage]);
 
   // Salvar Provedor de IA escolhido
   useEffect(() => {
@@ -376,7 +401,8 @@ export default function PaginaTriagemInteligente() {
       "Categoria",
       "Urgencia",
       "Sentimento",
-      "Escalar_Humano",
+      "Definir_Responsavel",
+      "Responsavel_Atribuido",
       "Resumo",
       "Mensagem_Original",
       "Resposta_Sugerida",
@@ -386,7 +412,7 @@ export default function PaginaTriagemInteligente() {
       `"${(val || "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
 
     const linhas = mensagens.map((m) => {
-      const escalar =
+      const definirResp =
         m.analise?.urgencia === "Alta" && m.analise?.sentimento === "Negativo"
           ? "SIM"
           : "NAO";
@@ -399,7 +425,8 @@ export default function PaginaTriagemInteligente() {
         escaparCSV(m.analise?.categoria || "N/A"),
         escaparCSV(m.analise?.urgencia || "N/A"),
         escaparCSV(m.analise?.sentimento || "N/A"),
-        escaparCSV(escalar),
+        escaparCSV(definirResp),
+        escaparCSV(m.responsavel || "Nao atribuido"),
         escaparCSV(m.analise?.resumo || ""),
         escaparCSV(m.texto),
         escaparCSV(m.respostaEditada ?? m.analise?.respostaSugerida ?? ""),
@@ -472,7 +499,9 @@ export default function PaginaTriagemInteligente() {
 
     const qtdEscalar = classificadas.filter(
       (m) =>
-        m.analise?.urgencia === "Alta" && m.analise?.sentimento === "Negativo"
+        m.analise?.urgencia === "Alta" &&
+        m.analise?.sentimento === "Negativo" &&
+        !m.responsavel
     ).length;
 
     const porCategoria = TODAS_CATEGORIAS.map((cat) => {
@@ -1318,7 +1347,8 @@ export default function PaginaTriagemInteligente() {
                     <div className="alerta-info p-4 flex items-center gap-3 text-xs font-semibold">
                       <Loader2 className="h-4 w-4 animate-spin text-[#0E4D52]" />
                       <span>
-                        Consultando Claude API e validando estrutura JSON...
+                        Consultando {INFO_PROVEDORES[provedorIA].nome} e
+                        validando estrutura JSON...
                       </span>
                     </div>
                   )}
