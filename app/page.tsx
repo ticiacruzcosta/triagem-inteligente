@@ -11,6 +11,11 @@ import {
 import { INFO_PROVEDORES } from "@/lib/llm-providers";
 import { EXEMPLOS_MENSAGENS } from "@/lib/exemplos";
 import {
+  detectarInjecaoMaliciosa,
+  sanitizarTextoEntrada,
+  validarFormatoHorario,
+} from "@/lib/validation";
+import {
   AlertTriangle,
   BarChart3,
   CheckCircle2,
@@ -131,6 +136,7 @@ export default function PaginaTriagemInteligente() {
   const [novoCanal, setNovoCanal] = useState<Canal>("WhatsApp");
   const [novoTexto, setNovoTexto] = useState<string>("");
   const [novoHorario, setNovoHorario] = useState<string>("");
+  const [erroFormulario, setErroFormulario] = useState<string | null>(null);
 
   // Estado de cópia e processamento em lote + Lock Síncrono Atômico (useRef)
   const [copiado, setCopiado] = useState<boolean>(false);
@@ -301,10 +307,35 @@ export default function PaginaTriagemInteligente() {
     }
   };
 
-  // Adicionar nova mensagem manual
+  // Adicionar nova mensagem manual (com validação anti-SQL Injection, anti-XSS e validação estrita de horário)
   const handleAdicionarMensagem = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!novoNome.trim() || !novoTexto.trim()) return;
+    setErroFormulario(null);
+
+    const nomeLimpo = sanitizarTextoEntrada(novoNome);
+    const textoLimpo = sanitizarTextoEntrada(novoTexto);
+
+    if (!nomeLimpo || !textoLimpo) {
+      setErroFormulario("Preencha o nome do cliente e a mensagem.");
+      return;
+    }
+
+    if (
+      detectarInjecaoMaliciosa(nomeLimpo) ||
+      detectarInjecaoMaliciosa(textoLimpo)
+    ) {
+      setErroFormulario(
+        "Entrada bloqueada por segurança: comandos SQL (SELECT, DROP, OR 1=1, etc.) ou scripts não são permitidos."
+      );
+      return;
+    }
+
+    if (!validarFormatoHorario(novoHorario)) {
+      setErroFormulario(
+        "Horário inválido. Informe apenas horas e minutos válidos no formato HH:MM (ex: 14:35)."
+      );
+      return;
+    }
 
     const agora = new Date();
     const horarioFormatado =
@@ -316,9 +347,9 @@ export default function PaginaTriagemInteligente() {
 
     const novaMsg: MensagemCliente = {
       id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-      nome: novoNome.trim(),
+      nome: nomeLimpo,
       canal: novoCanal,
-      texto: novoTexto.trim(),
+      texto: textoLimpo,
       horario: horarioFormatado,
       resolvido: false,
       statusTriagem: "pendente",
@@ -329,6 +360,7 @@ export default function PaginaTriagemInteligente() {
     setNovoNome("");
     setNovoTexto("");
     setNovoHorario("");
+    setErroFormulario(null);
     setModalAberto(false);
 
     await classificarMensagem(novaMsg, tomEmpresa, apiKeyCustom);
@@ -1954,6 +1986,13 @@ export default function PaginaTriagemInteligente() {
             </div>
 
             <form onSubmit={handleAdicionarMensagem} className="space-y-4">
+              {erroFormulario && (
+                <div className="alerta-erro p-3 flex items-start gap-2.5 text-xs font-bold">
+                  <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0 mt-0.5" />
+                  <span>{erroFormulario}</span>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-bold text-[#18191A] mb-1">
@@ -1962,8 +2001,12 @@ export default function PaginaTriagemInteligente() {
                   <input
                     type="text"
                     required
+                    maxLength={80}
                     value={novoNome}
-                    onChange={(e) => setNovoNome(e.target.value)}
+                    onChange={(e) => {
+                      setNovoNome(e.target.value);
+                      if (erroFormulario) setErroFormulario(null);
+                    }}
                     placeholder="Ex: Ana Paula Souza"
                     className="campo"
                   />
@@ -1989,12 +2032,17 @@ export default function PaginaTriagemInteligente() {
 
               <div>
                 <label className="block text-xs font-bold text-[#18191A] mb-1">
-                  Horário (opcional)
+                  Horário (opcional — formato HH:MM)
                 </label>
                 <input
                   type="time"
                   value={novoHorario}
-                  onChange={(e) => setNovoHorario(e.target.value)}
+                  onChange={(e) => {
+                    // Remove qualquer caractere que não seja número ou ":" caso o navegador não suporte type="time"
+                    const apenasHora = e.target.value.replace(/[^0-9:]/g, "").slice(0, 5);
+                    setNovoHorario(apenasHora);
+                    if (erroFormulario) setErroFormulario(null);
+                  }}
                   className="campo"
                 />
               </div>
@@ -2006,8 +2054,12 @@ export default function PaginaTriagemInteligente() {
                 <textarea
                   required
                   rows={4}
+                  maxLength={1500}
                   value={novoTexto}
-                  onChange={(e) => setNovoTexto(e.target.value)}
+                  onChange={(e) => {
+                    setNovoTexto(e.target.value);
+                    if (erroFormulario) setErroFormulario(null);
+                  }}
                   placeholder="Digite ou cole aqui a mensagem enviada pelo cliente..."
                   className="campo resize-none"
                 />

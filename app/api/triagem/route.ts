@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { validarAnaliseIA } from "@/lib/validation";
+import {
+  detectarInjecaoMaliciosa,
+  sanitizarTextoEntrada,
+  validarAnaliseIA,
+} from "@/lib/validation";
 import { gerarAnaliseDemonstracao } from "@/lib/fallback";
 import { executarChamadaLLM, INFO_PROVEDORES } from "@/lib/llm-providers";
 import { ProvedorIA } from "@/lib/types";
@@ -32,6 +36,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Bloqueio de segurança contra SQL Injection e XSS na camada de API
+    if (
+      detectarInjecaoMaliciosa(texto) ||
+      (nome && detectarInjecaoMaliciosa(nome))
+    ) {
+      return NextResponse.json(
+        {
+          erro: "Entrada bloqueada pelo filtro de segurança: padrão de comando SQL Injection ou script não permitido.",
+        },
+        { status: 400 }
+      );
+    }
+
+    const nomeSanitizado = sanitizarTextoEntrada(nome || "Cliente");
+    const textoSanitizado = sanitizarTextoEntrada(texto);
+
     const provedorSelecionado: ProvedorIA =
       provedor in INFO_PROVEDORES ? provedor : "anthropic";
 
@@ -47,9 +67,9 @@ export async function POST(req: NextRequest) {
     if (!chaveApi || chaveApi === "sk-ant-api03-sua-chave-aqui") {
       await new Promise((r) => setTimeout(r, 400));
       const analiseDemo = gerarAnaliseDemonstracao(
-        nome || "Cliente",
+        nomeSanitizado,
         canal || "Atendimento",
-        texto,
+        textoSanitizado,
         tomFormatado
       );
 
@@ -97,9 +117,9 @@ Regras obrigatórias:
 6. "respostaSugerida" deve saudar o cliente pelo nome (${nome || "Cliente"}) e adotar o seguinte tom da empresa: "${tomFormatado}".${complementoRefinamento}
 7. Responda SOMENTE com o JSON puro.`;
 
-    const userPrompt = `Cliente: ${nome || "Não informado"}
+    const userPrompt = `Cliente: ${nomeSanitizado}
 Canal de atendimento: ${canal || "Não informado"}
-Mensagem do cliente: "${texto}"`;
+Mensagem do cliente: "${textoSanitizado}"`;
 
     const respostaBruta = await executarChamadaLLM({
       provedor: provedorSelecionado,
