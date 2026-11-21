@@ -1507,7 +1507,7 @@ export default function PaginaTriagemInteligente() {
 
                         <textarea
                           id="campo-resposta-ia"
-                          rows={4}
+                          rows={7}
                           value={
                             mensagemSelecionada.respostaEditada ??
                             mensagemSelecionada.analise.respostaSugerida
@@ -1518,7 +1518,7 @@ export default function PaginaTriagemInteligente() {
                               e.target.value
                             )
                           }
-                          className="campo scroll-editorial text-xs sm:text-sm leading-relaxed resize-y"
+                          className="campo scroll-editorial p-4 text-sm sm:text-[15px] text-[#18191A] font-medium leading-relaxed min-h-[168px] resize-y"
                         />
                       </div>
                     </div>
