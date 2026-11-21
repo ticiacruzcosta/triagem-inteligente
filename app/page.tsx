@@ -402,7 +402,7 @@ export default function PaginaTriagemInteligente() {
     setCarregandoLote(false);
   };
 
-  // Exportar relatório CSV
+  // Exportar relatório CSV (Compatível com Excel em Português do Brasil usando ";" como separador de colunas)
   const handleExportarCSV = () => {
     if (mensagens.length === 0) return;
 
@@ -410,44 +410,49 @@ export default function PaginaTriagemInteligente() {
       "ID",
       "Cliente",
       "Canal",
-      "Horario",
+      "Horário",
       "Status",
       "Categoria",
-      "Urgencia",
+      "Urgência",
       "Sentimento",
-      "Definir_Responsavel",
-      "Responsavel_Atribuido",
+      "Definir Responsável",
+      "Responsável Atribuído",
       "Resumo",
-      "Mensagem_Original",
-      "Resposta_Sugerida",
+      "Mensagem Original",
+      "Resposta Sugerida",
     ];
 
     const escaparCSV = (val: string) =>
-      `"${(val || "").replace(/"/g, '""').replace(/\r?\n/g, " ")}"`;
+      `"${(val || "")
+        .replace(/"/g, '""')
+        .replace(/;/g, ",")
+        .replace(/\r?\n/g, " ")}"`;
 
     const linhas = mensagens.map((m) => {
       const definirResp =
         m.analise?.urgencia === "Alta" && m.analise?.sentimento === "Negativo"
           ? "SIM"
-          : "NAO";
+          : "NÃO";
       return [
         escaparCSV(m.id),
         escaparCSV(m.nome),
         escaparCSV(m.canal),
         escaparCSV(m.horario),
         escaparCSV(m.resolvido ? "Resolvido" : "Pendente"),
-        escaparCSV(m.analise?.categoria || "N/A"),
-        escaparCSV(m.analise?.urgencia || "N/A"),
-        escaparCSV(m.analise?.sentimento || "N/A"),
+        escaparCSV(m.analise?.categoria || "Pendente"),
+        escaparCSV(m.analise?.urgencia || "Pendente"),
+        escaparCSV(m.analise?.sentimento || "Pendente"),
         escaparCSV(definirResp),
-        escaparCSV(m.responsavel || "Nao atribuido"),
+        escaparCSV(m.responsavel || "Não atribuído"),
         escaparCSV(m.analise?.resumo || ""),
         escaparCSV(m.texto),
         escaparCSV(m.respostaEditada ?? m.analise?.respostaSugerida ?? ""),
-      ].join(",");
+      ].join(";");
     });
 
-    const conteudoCSV = "\uFEFF" + [cabecalho.join(","), ...linhas].join("\n");
+    // "\uFEFF" (UTF-8 BOM) garante acentuação perfeita e ";" separa cada dado em sua própria coluna no Excel pt-BR
+    const conteudoCSV =
+      "\uFEFF" + [cabecalho.join(";"), ...linhas].join("\r\n");
     const blob = new Blob([conteudoCSV], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
