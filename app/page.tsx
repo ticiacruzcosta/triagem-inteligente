@@ -579,8 +579,14 @@ export default function PaginaTriagemInteligente() {
         if (filtroUrgencia !== "Todas") {
           if (m.analise?.urgencia !== filtroUrgencia) return false;
         }
-        if (filtroStatus === "pendentes" && m.resolvido) return false;
-        if (filtroStatus === "resolvidos" && !m.resolvido) return false;
+        // Chamados resolvidos saem da fila ativa (Todos / Pendentes / Definir Responsável)
+        // e só aparecem quando o filtro "Resolvidos" for explicitamente selecionado
+        if (filtroStatus === "resolvidos") {
+          if (!m.resolvido) return false;
+        } else {
+          if (m.resolvido) return false;
+        }
+
         if (filtroStatus === "escalar") {
           const ehEscalar =
             m.analise?.urgencia === "Alta" &&
@@ -616,11 +622,29 @@ export default function PaginaTriagemInteligente() {
     setTimeout(() => setCopiado(false), 2500);
   };
 
-  // Alternar status de resolvido
+  // Alternar status de resolvido (ao resolver na fila ativa, seleciona automaticamente o próximo chamado pendente)
   const handleAlternarResolvido = (id: string) => {
-    setMensagens((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, resolvido: !m.resolvido } : m))
-    );
+    setMensagens((prev) => {
+      const atualizadas = prev.map((m) =>
+        m.id === id ? { ...m, resolvido: !m.resolvido } : m
+      );
+      const itemAlterado = atualizadas.find((m) => m.id === id);
+
+      // Se acabou de marcar como resolvido e não estamos na aba "Resolvidos", avança para o próximo da fila
+      if (itemAlterado?.resolvido && filtroStatus !== "resolvidos") {
+        const proximoPendente = atualizadas.find(
+          (m) => !m.resolvido && m.id !== id
+        );
+        setIdSelecionado(proximoPendente ? proximoPendente.id : null);
+      } else if (!itemAlterado?.resolvido && filtroStatus === "resolvidos") {
+        const proximoResolvido = atualizadas.find(
+          (m) => m.resolvido && m.id !== id
+        );
+        setIdSelecionado(proximoResolvido ? proximoResolvido.id : null);
+      }
+
+      return atualizadas;
+    });
   };
 
   // Atualizar texto editado da resposta
@@ -1007,10 +1031,12 @@ export default function PaginaTriagemInteligente() {
                 {/* Chips de Status integrados diretamente na Caixa de Entrada */}
                 <div className="flex flex-wrap items-center gap-1.5">
                   {[
-                    { id: "todos", label: "Todos" },
-                    { id: "pendentes", label: "Pendentes" },
+                    { id: "todos", label: "Pendentes" },
                     { id: "escalar", label: "Definir Responsável" },
-                    { id: "resolvidos", label: "Resolvidos" },
+                    {
+                      id: "resolvidos",
+                      label: `Resolvidos (${metricas.qtdResolvidos})`,
+                    },
                   ].map((st) => (
                     <button
                       key={st.id}
