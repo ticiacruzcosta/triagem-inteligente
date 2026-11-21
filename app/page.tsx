@@ -5,8 +5,10 @@ import {
   Canal,
   Categoria,
   MensagemCliente,
+  ProvedorIA,
   Urgencia,
 } from "@/lib/types";
+import { INFO_PROVEDORES } from "@/lib/llm-providers";
 import { EXEMPLOS_MENSAGENS } from "@/lib/exemplos";
 import {
   AlertTriangle,
@@ -33,6 +35,7 @@ import {
 const STORAGE_KEY_MENSAGENS = "triagem_inteligente_mensagens_v1";
 const STORAGE_KEY_TOM = "triagem_inteligente_tom_v1";
 const STORAGE_KEY_API = "triagem_inteligente_apikey_v1";
+const STORAGE_KEY_PROVEDOR = "triagem_inteligente_provedor_v1";
 
 interface PresetPersonalidade {
   id: string;
@@ -87,15 +90,14 @@ export default function PaginaTriagemInteligente() {
   const [carregadoStorage, setCarregadoStorage] = useState(false);
   const [idSelecionado, setIdSelecionado] = useState<string | null>(null);
 
-  // Configurações de Tom e API
+  // Configurações de Tom, Provedor de IA e API Key
   const [tomEmpresa, setTomEmpresa] = useState<string>(
     PRESETS_PERSONALIDADE[0].valor
   );
+  const [provedorIA, setProvedorIA] = useState<ProvedorIA>("anthropic");
   const [apiKeyCustom, setApiKeyCustom] = useState<string>("");
   const [mostrarConfigApi, setMostrarConfigApi] = useState<boolean>(false);
-  const [modoExecucao, setModoExecucao] = useState<
-    "anthropic" | "demonstracao" | null
-  >(null);
+  const [modoExecucao, setModoExecucao] = useState<string | null>(null);
 
   // Filtros e Tabs
   const [buscaTexto, setBuscaTexto] = useState<string>("");
@@ -146,6 +148,13 @@ export default function PaginaTriagemInteligente() {
 
       const apiSalva = localStorage.getItem(STORAGE_KEY_API);
       if (apiSalva) setApiKeyCustom(apiSalva);
+
+      const provedorSalvo = localStorage.getItem(
+        STORAGE_KEY_PROVEDOR
+      ) as ProvedorIA | null;
+      if (provedorSalvo && provedorSalvo in INFO_PROVEDORES) {
+        setProvedorIA(provedorSalvo);
+      }
     } catch (e) {
       console.error("Erro ao ler localStorage:", e);
     } finally {
@@ -175,12 +184,19 @@ export default function PaginaTriagemInteligente() {
     localStorage.setItem(STORAGE_KEY_API, apiKeyCustom);
   }, [apiKeyCustom, carregadoStorage]);
 
+  // Salvar Provedor de IA escolhido
+  useEffect(() => {
+    if (!carregadoStorage) return;
+    localStorage.setItem(STORAGE_KEY_PROVEDOR, provedorIA);
+  }, [provedorIA, carregadoStorage]);
+
   // Classificar mensagem na API
   const classificarMensagem = async (
     msg: MensagemCliente,
     tomAtual: string,
     chaveAtual: string,
-    instrucaoRefinamento?: string
+    instrucaoRefinamento?: string,
+    provedorAtual: ProvedorIA = provedorIA
   ) => {
     setMensagens((prev) =>
       prev.map((item) =>
@@ -200,6 +216,7 @@ export default function PaginaTriagemInteligente() {
           texto: msg.texto,
           tomEmpresa: tomAtual,
           apiKey: chaveAtual,
+          provedor: provedorAtual,
           instrucaoRefinamento,
         }),
       });
@@ -661,10 +678,13 @@ export default function PaginaTriagemInteligente() {
               <br />
               Inteligente
             </h1>
-            { (apiKeyCustom.trim() || modoExecucao === "anthropic") && (
+            {(apiKeyCustom.trim() ||
+              (modoExecucao && modoExecucao !== "demonstracao")) && (
               <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-[#0E4D52]">
                 <span className="h-2 w-2 rounded-full bg-[#1E8E4E]" />
-                <span>API Anthropic Conectada (Claude Sonnet 4)</span>
+                <span>
+                  API Conectada: {INFO_PROVEDORES[provedorIA].nome}
+                </span>
               </div>
             )}
           </div>
@@ -916,7 +936,7 @@ export default function PaginaTriagemInteligente() {
             </div>
 
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-              <div className="lg:col-span-7 space-y-1.5">
+              <div className="lg:col-span-5 space-y-1.5">
                 <label
                   htmlFor="input-tom-empresa"
                   className="tabela-cab flex items-center gap-1.5"
@@ -933,20 +953,44 @@ export default function PaginaTriagemInteligente() {
                 />
               </div>
 
-              <div className="lg:col-span-5 space-y-1.5">
+              <div className="lg:col-span-3 space-y-1.5">
+                <label
+                  htmlFor="select-provedor-ia"
+                  className="tabela-cab flex items-center gap-1.5"
+                >
+                  PROVEDOR DE IA (LLM)
+                </label>
+                <select
+                  id="select-provedor-ia"
+                  value={provedorIA}
+                  onChange={(e) =>
+                    setProvedorIA(e.target.value as ProvedorIA)
+                  }
+                  className="campo font-semibold"
+                >
+                  <option value="anthropic">
+                    Anthropic (Claude Sonnet 4)
+                  </option>
+                  <option value="openai">OpenAI (GPT-4o Mini)</option>
+                  <option value="gemini">Google (Gemini 2.5 Flash)</option>
+                  <option value="groq">Groq (Llama 3.3 70B)</option>
+                </select>
+              </div>
+
+              <div className="lg:col-span-4 space-y-1.5">
                 <label
                   htmlFor="input-api-key"
                   className="tabela-cab flex items-center gap-1.5"
                 >
                   <KeyRound className="h-3.5 w-3.5 text-[#0E4D52]" />
-                  ANTHROPIC API KEY (OPCIONAL)
+                  CHAVE DA API ({INFO_PROVEDORES[provedorIA].envVar})
                 </label>
                 <input
                   id="input-api-key"
                   type="password"
                   value={apiKeyCustom}
                   onChange={(e) => setApiKeyCustom(e.target.value)}
-                  placeholder="sk-ant-api03-... (vazio = Modo Demonstração)"
+                  placeholder={INFO_PROVEDORES[provedorIA].placeholderKey}
                   className="campo font-mono"
                 />
               </div>

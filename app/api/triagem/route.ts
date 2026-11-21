@@ -1,20 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { validarAnaliseIA } from "@/lib/validation";
 import { gerarAnaliseDemonstracao } from "@/lib/fallback";
+import { executarChamadaLLM, INFO_PROVEDORES } from "@/lib/llm-providers";
+import { ProvedorIA } from "@/lib/types";
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { nome, canal, texto, tomEmpresa, apiKey, instrucaoRefinamento } =
-      body as {
-        nome?: string;
-        canal?: string;
-        texto?: string;
-        tomEmpresa?: string;
-        apiKey?: string;
-        instrucaoRefinamento?: string;
-      };
+    const {
+      nome,
+      canal,
+      texto,
+      tomEmpresa,
+      apiKey,
+      provedor = "anthropic",
+      instrucaoRefinamento,
+    } = body as {
+      nome?: string;
+      canal?: string;
+      texto?: string;
+      tomEmpresa?: string;
+      apiKey?: string;
+      provedor?: ProvedorIA;
+      instrucaoRefinamento?: string;
+    };
 
     if (!texto || !texto.trim()) {
       return NextResponse.json(
@@ -23,20 +32,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const provedorSelecionado: ProvedorIA =
+      provedor in INFO_PROVEDORES ? provedor : "anthropic";
+
     const tomFormatado =
       tomEmpresa?.trim() ||
       "Empático, prestativo, profissional, claro e orientado à solução rápida.";
 
-    const chaveApi = (
-      apiKey?.trim() ||
-      process.env.ANTHROPIC_API_KEY ||
-      ""
-    ).trim();
+    const envVarName = INFO_PROVEDORES[provedorSelecionado].envVar;
+    const chaveEnv = process.env[envVarName] || "";
+    const chaveApi = (apiKey?.trim() || chaveEnv).trim();
 
-    // Se não houver chave configurada (ex: recrutador testando o projeto clonado do GitHub),
-    // utiliza o motor de demonstração estruturado e valida com o mesmo schema JSON.
+    // Se nenhuma chave foi informada para o provedor escolhido, utiliza o Modo Demonstração Zero-Config
     if (!chaveApi || chaveApi === "sk-ant-api03-sua-chave-aqui") {
-      await new Promise((r) => setTimeout(r, 450));
+      await new Promise((r) => setTimeout(r, 400));
       const analiseDemo = gerarAnaliseDemonstracao(
         nome || "Cliente",
         canal || "Atendimento",
@@ -58,12 +67,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         analise: validada,
         modo: "demonstracao",
+        provedor: provedorSelecionado,
       });
     }
-
-    const anthropic = new Anthropic({
-      apiKey: chaveApi,
-    });
 
     const complementoRefinamento = instrucaoRefinamento
       ? `\nInstrução extra para a respostaSugerida: Ajuste a resposta para ser "${instrucaoRefinamento}".`
@@ -95,28 +101,14 @@ Regras obrigatórias:
 Canal de atendimento: ${canal || "Não informado"}
 Mensagem do cliente: "${texto}"`;
 
-    const msg = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 800,
-      temperature: 0.2,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: userPrompt,
-        },
-      ],
+    const respostaBruta = await executarChamadaLLM({
+      provedor: provedorSelecionado,
+      apiKey: chaveApi,
+      systemPrompt,
+      userPrompt,
     });
 
-    const blocoTexto = msg.content.find((b) => b.type === "text");
-    if (!blocoTexto || blocoTexto.type !== "text") {
-      return NextResponse.json(
-        { erro: "A IA não retornou conteúdo textual." },
-        { status: 502 }
-      );
-    }
-
-    let textoLimpo = blocoTexto.text.trim();
+    let textoLimpo = respostaBruta.trim();
     const matchJson = textoLimpo.match(/\{[\s\S]*\}/);
     if (matchJson) {
       textoLimpo = matchJson[0];
@@ -128,7 +120,7 @@ Mensagem do cliente: "${texto}"`;
     } catch {
       return NextResponse.json(
         {
-          erro: "A resposta retornada pela IA não é um JSON válido. Tente classificar novamente.",
+          erro: `A resposta retornada pelo provedor ${INFO_PROVEDORES[provedorSelecionado].nome} não é um JSON válido. Tente classificar novamente.`,
         },
         { status: 502 }
       );
@@ -138,13 +130,14 @@ Mensagem do cliente: "${texto}"`;
 
     return NextResponse.json({
       analise: analiseValidada,
-      modo: "anthropic",
+      modo: provedorSelecionado,
+      provedor: provedorSelecionado,
     });
   } catch (err: unknown) {
     const mensagemErro =
       err instanceof Error
         ? err.message
-        : "Falha inesperada ao comunicar com a API da Anthropic.";
+        : "Falha inesperada ao comunicar com o provedor de IA.";
     return NextResponse.json({ erro: mensagemErro }, { status: 500 });
   }
 }

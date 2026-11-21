@@ -12,6 +12,8 @@ export type Sentimento = "Positivo" | "Neutro" | "Negativo";
 
 export type Canal = "WhatsApp" | "E-mail" | "Chat" | "Instagram" | "Telefone";
 
+export type ProvedorIA = "anthropic" | "openai" | "gemini" | "groq";
+
 export interface AnaliseIA {
   categoria: Categoria;
   urgencia: Urgencia;
