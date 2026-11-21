@@ -660,6 +660,76 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
+  // Refinar a resposta de forma CUMULATIVA (preservando os ajustes anteriores como +CPF, Mais formal ou Mais curta)
+  const handleRefinarResposta = (
+    msg: MensagemCliente,
+    tipo: "curta" | "formal" | "dados" | "original"
+  ) => {
+    const baseOriginal = msg.analise?.respostaSugerida || "";
+    if (!baseOriginal) return;
+
+    if (tipo === "original") {
+      handleEditarResposta(msg.id, baseOriginal);
+      return;
+    }
+
+    const textoAtual = (msg.respostaEditada ?? baseOriginal).trim();
+    const fraseCPF =
+      "Para agilizar seu atendimento, poderia nos informar por gentileza seu CPF/CNPJ ou o número do pedido correspondente?";
+    const jaTemCPF =
+      textoAtual.toLowerCase().includes("cpf") ||
+      textoAtual.toLowerCase().includes("cnpj");
+
+    // 1. Se clicou em "+ Pedir CPF", apenas adiciona (ou mantém) a solicitação de CPF no texto atual sem perder se já estava curto ou formal!
+    if (tipo === "dados") {
+      if (jaTemCPF) return;
+      const paragrafos = textoAtual.split(/\n\n+/);
+      if (paragrafos.length >= 2) {
+        // Insere antes da despedida/assinatura final
+        const antesAssinatura = paragrafos.slice(0, -1).join("\n\n");
+        const assinatura = paragrafos[paragrafos.length - 1];
+        handleEditarResposta(
+          msg.id,
+          `${antesAssinatura}\n\n${fraseCPF}\n\n${assinatura}`
+        );
+      } else {
+        handleEditarResposta(msg.id, `${textoAtual}\n\n${fraseCPF}`);
+      }
+      return;
+    }
+
+    // Extrai o parágrafo principal original da IA para transformar sem perder o contexto específico do caso
+    const paragrafosOriginais = baseOriginal.split(/\n\n+/);
+    const mioloOriginal =
+      paragrafosOriginais.length >= 3
+        ? paragrafosOriginais[1]
+        : paragrafosOriginais[0];
+
+    // 2. Se clicou em "Mais curta", resume mantendo o assunto real + mantém o pedido de CPF se o usuário já tinha clicado em "+ Pedir CPF"!
+    if (tipo === "curta") {
+      const primeiraFrase =
+        mioloOriginal.split(/(?<=[.!?])\s+/)[0] || mioloOriginal;
+      let novoTexto = `Olá, ${msg.nome.split(" ")[0]}!\n\n${primeiraFrase}`;
+      if (jaTemCPF) {
+        novoTexto += `\n\n${fraseCPF}`;
+      }
+      novoTexto += `\n\nSeguimos à disposição pelo ${msg.canal}.\nEquipe de Suporte.`;
+      handleEditarResposta(msg.id, novoTexto);
+      return;
+    }
+
+    // 3. Se clicou em "Mais formal", aplica saudação e fechamento executivos mantendo o miolo real do problema + mantém o CPF se já estava ativo!
+    if (tipo === "formal") {
+      let novoTexto = `Prezado(a) ${msg.nome},\n\n${mioloOriginal}`;
+      if (jaTemCPF) {
+        novoTexto += `\n\n${fraseCPF}`;
+      }
+      novoTexto += `\n\nPermanecemos à inteira disposição por meio do canal ${msg.canal}.\nCordialmente,\nCentral de Relacionamento com o Cliente.`;
+      handleEditarResposta(msg.id, novoTexto);
+      return;
+    }
+  };
+
   // Definir responsável pelo chamado
   const handleDefinirResponsavel = (id: string, responsavel: string) => {
     setMensagens((prev) =>
@@ -1504,16 +1574,19 @@ export default function PaginaTriagemInteligente() {
                               { id: "curta", label: "Mais curta" },
                               { id: "formal", label: "Mais formal" },
                               { id: "dados", label: "+ Pedir CPF" },
+                              { id: "original", label: "Restaurar" },
                             ].map((acao) => (
                               <button
                                 key={acao.id}
                                 type="button"
                                 onClick={() =>
-                                  classificarMensagem(
+                                  handleRefinarResposta(
                                     mensagemSelecionada,
-                                    tomEmpresa,
-                                    apiKeyCustom,
-                                    acao.id
+                                    acao.id as
+                                      | "curta"
+                                      | "formal"
+                                      | "dados"
+                                      | "original"
                                   )
                                 }
                                 className="chip chip-neutro text-[11px] py-0.5 px-2.5"
@@ -1919,10 +1992,9 @@ export default function PaginaTriagemInteligente() {
                   Horário (opcional)
                 </label>
                 <input
-                  type="text"
+                  type="time"
                   value={novoHorario}
                   onChange={(e) => setNovoHorario(e.target.value)}
-                  placeholder="Ex: 14:35 (vazio = horário atual)"
                   className="campo"
                 />
               </div>

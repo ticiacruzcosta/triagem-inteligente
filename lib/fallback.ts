@@ -22,8 +22,30 @@ export function gerarAnaliseDemonstracao(
   let resumo = "Contato geral recebido pela central de atendimento ao cliente.";
   let corpoResposta = "";
 
-  // 1. Detectar Categoria e contexto
-  if (
+  // 0. Detectar texto incompreensível / teste aleatório de teclado (ex: "jhroegww", "asdfg")
+  const palavrasValidas = t
+    .replace(/[^a-záàâãéêíóôõúç\s]/gi, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const temVogal = /[aeiouáàâãéêíóôõú]/i.test(t);
+  const pareceAleatoria =
+    t.trim().length < 4 ||
+    !temVogal ||
+    (palavrasValidas.length === 1 &&
+      palavrasValidas[0].length >= 5 &&
+      !/[aeiou]{1,2}[^aeiou]{1,2}[aeiou]/i.test(palavrasValidas[0]));
+
+  if (pareceAleatoria) {
+    categoria = "Outro";
+    urgencia = "Baixa";
+    sentimento = "Neutro";
+    justificativaUrgencia =
+      "Mensagem curta ou sem contexto claro identificada; requer confirmação do cliente antes de prosseguir.";
+    resumo = "Mensagem sem contexto claro recebida; necessário solicitar detalhes ao cliente.";
+    corpoResposta = `Recebemos seu contato, porém não conseguimos identificar os detalhes da sua solicitação na mensagem enviada. Poderia nos explicar com mais detalhes como podemos ajudar você hoje?`;
+  } else if (
+    // 1. Detectar Categoria e contexto
     t.includes("cobr") ||
     t.includes("fatura") ||
     t.includes("boleto") ||
