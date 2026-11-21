@@ -650,18 +650,6 @@ export default function PaginaTriagemInteligente() {
         </div>
       </div>
 
-      {/* RÉGUA ARQUITETÔNICA SUPERIOR (1 a 12) */}
-      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pt-3 select-none">
-        <div className="grid grid-cols-12 border-b border-[#D8D5CE] pb-1 text-[10px] font-mono text-[#787877]">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between px-1.5">
-              <span>{i + 1}</span>
-              <span className="h-1.5 w-px bg-[#D8D5CE]" />
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* CONTAINER PRINCIPAL EDITORIAL EM LARGURA TOTAL */}
       <main className="relative z-10 w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 space-y-6">
         {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (TOPO COM TOPO, BASE COM BASE) */}
@@ -1591,18 +1579,6 @@ export default function PaginaTriagemInteligente() {
           </div>
         </section>
       </main>
-
-      {/* RÉGUA ARQUITETÔNICA INFERIOR (0 a 11) */}
-      <footer className="relative z-10 w-full px-4 sm:px-6 lg:px-8 pb-4 pt-4 select-none">
-        <div className="grid grid-cols-12 border-t border-[#D8D5CE] pt-1.5 text-[10px] font-mono text-[#787877]">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between px-1.5">
-              <span>{i}</span>
-              <span className="h-1.5 w-px bg-[#D8D5CE]" />
-            </div>
-          ))}
-        </div>
-      </footer>
 
       {/* MODAL PARA ADICIONAR MENSAGEM */}
       {modalAberto && (
