@@ -136,6 +136,20 @@ export default function PaginaTriagemInteligente() {
   const [copiado, setCopiado] = useState<boolean>(false);
   const [carregandoLote, setCarregandoLote] = useState<boolean>(false);
   const lockCarregamentoRef = useRef<boolean>(false);
+  const painelDetalheRef = useRef<HTMLDivElement | null>(null);
+
+  // Selecionar mensagem na lista e rolar suavemente até o painel de resposta quando estiver no celular
+  const handleSelecionarMensagem = (id: string) => {
+    setIdSelecionado(id);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) {
+      setTimeout(() => {
+        painelDetalheRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }, 60);
+    }
+  };
 
   // Carregar dados do localStorage na montagem e deduplicar automaticamente registros antigos
   useEffect(() => {
@@ -684,25 +698,27 @@ export default function PaginaTriagemInteligente() {
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden">
-      {/* GRADE ARQUITETÔNICA REAL DE 12 COLUNAS EM TELA CHEIA (FULL-WIDTH) */}
-      <div className="pointer-events-none fixed inset-0 z-0 w-full px-4 sm:px-6 lg:px-8">
-        <div className="grid h-full grid-cols-12 border-x border-[#D8D5CE]/55">
+      {/* GRADE ARQUITETÔNICA REAL DE 12 COLUNAS (4 COLUNAS NO CELULAR, 12 NO DESKTOP) */}
+      <div className="pointer-events-none fixed inset-0 z-0 w-full px-3 sm:px-6 lg:px-8">
+        <div className="grid h-full grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 border-x border-[#D8D5CE]/55">
           {Array.from({ length: 12 }).map((_, i) => (
             <div
               key={i}
-              className="h-full border-r border-[#D8D5CE]/45 last:border-r-0"
+              className={`h-full border-r border-[#D8D5CE]/45 last:border-r-0 ${
+                i >= 4 ? "hidden sm:block" : ""
+              } ${i >= 6 ? "sm:hidden lg:block" : ""}`}
             />
           ))}
         </div>
       </div>
 
       {/* CONTAINER PRINCIPAL EDITORIAL EM LARGURA TOTAL */}
-      <main className="relative z-10 w-full flex-1 px-4 py-6 sm:px-6 lg:px-8 space-y-6">
-        {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (TOPO COM TOPO, BASE COM BASE) */}
-        <header className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-6 items-stretch">
+      <main className="relative z-10 w-full flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 space-y-5 sm:space-y-6">
+        {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (RESPONSIVO MOBILE & DESKTOP) */}
+        <header className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-5 sm:pb-6 items-stretch">
           {/* Esquerda (Cols 1-6): Título Display + Status da API quando conectada */}
           <div className="lg:col-span-6 flex flex-col justify-between space-y-2">
-            <h1 className="text-4xl sm:text-[56px] font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.94]">
+            <h1 className="text-3xl sm:text-5xl lg:text-[56px] font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.95]">
               Triagem
               <br />
               Inteligente
@@ -718,14 +734,14 @@ export default function PaginaTriagemInteligente() {
             )}
           </div>
 
-          {/* Direita (Cols 7-12): Botões alinhados no Topo + Tabs alinhadas na Base */}
-          <div className="lg:col-span-6 flex flex-col justify-between items-start lg:items-end gap-4">
-            <div className="flex flex-wrap items-center gap-2.5 pt-1">
+          {/* Direita (Cols 7-12): Botões adaptáveis em Grid no Celular + Flex no Desktop */}
+          <div className="lg:col-span-6 flex flex-col justify-between items-stretch lg:items-end gap-4">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={handleCarregarExemplos}
                 disabled={carregandoLote || exemplosJaCarregados}
-                className="btn btn-principal px-5 py-2.5 text-xs"
+                className="btn btn-principal px-3.5 sm:px-5 py-2.5 text-xs w-full sm:w-auto"
                 title={
                   exemplosJaCarregados
                     ? "Os 15 exemplos já foram carregados na fila"
@@ -734,18 +750,18 @@ export default function PaginaTriagemInteligente() {
               >
                 {carregandoLote ? (
                   <>
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    Carregando exemplos...
+                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                    <span className="truncate">Carregando...</span>
                   </>
                 ) : exemplosJaCarregados ? (
                   <>
-                    <Check className="h-3.5 w-3.5" />
-                    15 exemplos carregados
+                    <Check className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">15 exemplos</span>
                   </>
                 ) : (
                   <>
-                    <Inbox className="h-3.5 w-3.5" />
-                    Carregar 15 exemplos
+                    <Inbox className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">Carregar 15 exemplos</span>
                   </>
                 )}
               </button>
@@ -753,21 +769,21 @@ export default function PaginaTriagemInteligente() {
               <button
                 type="button"
                 onClick={() => setModalAberto(true)}
-                className="btn btn-secundario px-4 py-2.5 text-xs"
+                className="btn btn-secundario px-3.5 sm:px-4 py-2.5 text-xs w-full sm:w-auto"
               >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-                Adicionar mensagem
+                <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
+                <span className="truncate">Adicionar mensagem</span>
               </button>
 
               {mensagens.length > 0 && (
                 <button
                   type="button"
                   onClick={handleExportarCSV}
-                  className="btn btn-secundario px-3.5 py-2.5 text-xs"
+                  className="btn btn-secundario px-3.5 py-2.5 text-xs w-full sm:w-auto"
                   title="Exportar relatório CSV"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  CSV
+                  <Download className="h-3.5 w-3.5 shrink-0" />
+                  <span>Exportar CSV</span>
                 </button>
               )}
 
@@ -778,20 +794,20 @@ export default function PaginaTriagemInteligente() {
                     a === "configuracoes" ? "triagem" : "configuracoes"
                   )
                 }
-                className={`btn px-3.5 py-2.5 text-xs ${
+                className={`btn px-3.5 py-2.5 text-xs w-full sm:w-auto ${
                   abaAtiva === "configuracoes"
                     ? "btn-principal"
                     : "btn-secundario"
-                }`}
-                title="Configurar Tom da Empresa e Chave da API Anthropic"
+                } ${mensagens.length === 0 ? "col-span-2 sm:col-span-1" : ""}`}
+                title="Configurar Tom da Empresa e Chave da API"
               >
-                <SlidersHorizontal className="h-3.5 w-3.5" />
-                Configurações
+                <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
+                <span>Configurações</span>
               </button>
             </div>
 
-            {/* TABS MINIMALISTAS */}
-            <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
+            {/* TABS MINIMALISTAS COM SCROLL HORIZONTAL SUAVE NO CELULAR */}
+            <div className="flex items-center gap-4 sm:gap-6 border-b border-[#D8D5CE] w-full lg:w-auto overflow-x-auto no-scrollbar">
               {[
                 { id: "triagem", label: "Overview & Fila" },
                 { id: "analitico", label: "Métricas & Categorias" },
@@ -807,7 +823,7 @@ export default function PaginaTriagemInteligente() {
                         tab.id as "triagem" | "analitico" | "configuracoes"
                       )
                     }
-                    className={`pb-2 text-xs font-bold transition-all border-b-2 -mb-px ${
+                    className={`pb-2.5 text-xs font-bold whitespace-nowrap transition-all border-b-2 -mb-px flex-1 sm:flex-initial text-center ${
                       ativo
                         ? "border-[#0E4D52] text-[#18191A]"
                         : "border-transparent text-[#787877] hover:text-[#3D3E40]"
@@ -821,50 +837,52 @@ export default function PaginaTriagemInteligente() {
           </div>
         </header>
 
-        {/* 2. MÉTRICAS NO TOPO (CADA CARD OCUPA EXATAMENTE 3 COLUNAS DA GRADE DE 12) */}
+        {/* 2. MÉTRICAS NO TOPO (2x2 COMPACTO NO CELULAR, 4 COLUNAS NO DESKTOP) */}
         <section className="space-y-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <span className="tabela-cab">MÉTRICAS & ELEVATION TOKENS</span>
             <span className="text-[11px] font-mono text-[#787877]">
-              SLA Base: 4 min / resposta manual
+              SLA Base: 4 min / resposta
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
             {/* Card 1 (Cols 1-3): Primary Action Token Style */}
-            <div className="lg:col-span-3 rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[118px]">
-              <div className="flex items-center justify-between text-[11px] font-semibold text-[#DCE9F2]/80 uppercase tracking-wider">
-                <span>Total de Mensagens</span>
-                <span className="font-mono">Level 1</span>
+            <div className="lg:col-span-3 rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-3.5 sm:p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
+              <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-[#DCE9F2]/80 uppercase tracking-wider">
+                <span className="truncate">Total na Fila</span>
+                <span className="font-mono hidden sm:inline">Level 1</span>
               </div>
-              <div className="my-1 flex items-baseline justify-between">
-                <span className="text-3xl font-extrabold tracking-tight">
+              <div className="my-1 flex items-baseline justify-between gap-1">
+                <span className="text-2xl sm:text-3xl font-extrabold tracking-tight">
                   {metricas.total}
                 </span>
-                <span className="text-xs text-[#DCE9F2]">
+                <span className="text-[11px] sm:text-xs text-[#DCE9F2] truncate">
                   {metricas.totalClassificadas} triadas
                 </span>
               </div>
-              <div className="text-[11px] text-[#DCE9F2]/90 font-medium">
-                Primary Action • {metricas.qtdResolvidos} resolvidas
+              <div className="text-[10px] sm:text-[11px] text-[#DCE9F2]/90 font-medium truncate">
+                {metricas.qtdResolvidos} resolvidas
               </div>
             </div>
 
             {/* Card 2 (Cols 4-6): Urgência Alta */}
-            <div className="lg:col-span-3 cartao p-4 flex flex-col justify-between min-h-[118px]">
+            <div className="lg:col-span-3 cartao p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between">
-                <span className="tabela-cab">Urgência Alta</span>
-                <span className="font-mono text-[11px] text-[#787877]">
+                <span className="tabela-cab text-[10px] sm:text-[11px]">
+                  Urgência Alta
+                </span>
+                <span className="font-mono text-[10px] sm:text-[11px] text-[#787877]">
                   {metricas.pctAlta}%
                 </span>
               </div>
-              <div className="my-1 flex items-baseline gap-2">
-                <span className="text-3xl font-extrabold text-[#18191A]">
+              <div className="my-1 flex items-baseline gap-1.5 flex-wrap">
+                <span className="text-2xl sm:text-3xl font-extrabold text-[#18191A]">
                   {metricas.qtdAlta}
                 </span>
                 {metricas.qtdEscalar > 0 && (
-                  <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
-                    {metricas.qtdEscalar} s/ responsável
+                  <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-1.5 sm:px-2 py-0.5 text-[9px] sm:text-[10px] font-bold text-[#7D1D1D] truncate">
+                    {metricas.qtdEscalar} s/ resp.
                   </span>
                 )}
               </div>
@@ -877,22 +895,24 @@ export default function PaginaTriagemInteligente() {
             </div>
 
             {/* Card 3 (Cols 7-9): % por Urgência */}
-            <div className="lg:col-span-3 cartao p-4 flex flex-col justify-between min-h-[118px]">
+            <div className="lg:col-span-3 cartao p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between">
-                <span className="tabela-cab">% Por Urgência</span>
-                <span className="font-mono text-[11px] text-[#787877]">
+                <span className="tabela-cab text-[10px] sm:text-[11px]">
+                  % Por Urgência
+                </span>
+                <span className="font-mono text-[10px] sm:text-[11px] text-[#787877] hidden sm:inline">
                   Dist.
                 </span>
               </div>
-              <div className="my-1 space-y-1 text-xs font-semibold text-[#3D3E40]">
+              <div className="my-1 space-y-0.5 sm:space-y-1 text-[11px] sm:text-xs font-semibold text-[#3D3E40]">
                 <div className="flex justify-between">
-                  <span>Média (Amarelo):</span>
+                  <span>Média:</span>
                   <span className="font-mono font-bold text-[#18191A]">
                     {metricas.pctMedia}% ({metricas.qtdMedia})
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Baixa (Verde):</span>
+                  <span>Baixa:</span>
                   <span className="font-mono font-bold text-[#18191A]">
                     {metricas.pctBaixa}% ({metricas.qtdBaixa})
                   </span>
@@ -915,18 +935,20 @@ export default function PaginaTriagemInteligente() {
             </div>
 
             {/* Card 4 (Cols 10-12): Tempo Economizado */}
-            <div className="lg:col-span-3 cartao p-4 flex flex-col justify-between min-h-[118px]">
+            <div className="lg:col-span-3 cartao p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between">
-                <span className="tabela-cab">Tempo Economizado</span>
-                <Clock className="h-3.5 w-3.5 text-[#0E4D52]" />
+                <span className="tabela-cab text-[10px] sm:text-[11px] truncate">
+                  Tempo Poupado
+                </span>
+                <Clock className="h-3.5 w-3.5 text-[#0E4D52] shrink-0" />
               </div>
               <div className="my-1">
-                <span className="text-3xl font-extrabold text-[#0E4D52] tracking-tight">
+                <span className="text-2xl sm:text-3xl font-extrabold text-[#0E4D52] tracking-tight">
                   {metricas.tempoFormatado}
                 </span>
               </div>
-              <div className="text-[11px] text-[#787877] font-medium">
-                Estimativa: 4 min por resposta
+              <div className="text-[10px] sm:text-[11px] text-[#787877] font-medium truncate">
+                4 min / resposta
               </div>
             </div>
           </div>
@@ -980,7 +1002,7 @@ export default function PaginaTriagemInteligente() {
             </div>
 
             {/* Card Unificado da Esquerda */}
-            <div className="cartao p-4 flex flex-col max-h-[580px]">
+            <div className="cartao p-3.5 sm:p-4 flex flex-col max-h-[440px] lg:max-h-[580px]">
               {/* Topo Fixo: Busca + Chips de Status + Seletores */}
               <div className="space-y-3 border-b border-[#D8D5CE] pb-3.5 shrink-0">
                 <div className="relative">
@@ -1096,7 +1118,7 @@ export default function PaginaTriagemInteligente() {
                       <button
                         key={msg.id}
                         type="button"
-                        onClick={() => setIdSelecionado(msg.id)}
+                        onClick={() => handleSelecionarMensagem(msg.id)}
                         className={`w-full text-left rounded-[8px] p-3.5 transition-all border flex flex-col gap-1.5 ${
                           ativo
                             ? "border-[#0E4D52] ring-1 ring-[#0E4D52] bg-[#FAF9F5] shadow-xs"
@@ -1175,7 +1197,10 @@ export default function PaginaTriagemInteligente() {
           </div>
 
           {/* COLUNA DIREITA (Cols 6-12): RÓTULO NA MESMA LINHA Y + CARD DE MESMA ALTURA */}
-          <div className="lg:col-span-7 flex flex-col space-y-2">
+          <div
+            ref={painelDetalheRef}
+            className="lg:col-span-7 flex flex-col space-y-2 scroll-mt-4"
+          >
             <div className="flex items-center justify-between h-5">
               <span className="tabela-cab">PAINEL DE INSPEÇÃO & RESPOSTA</span>
               {mensagemSelecionada && (
@@ -1245,7 +1270,7 @@ export default function PaginaTriagemInteligente() {
                               e.target.value
                             )
                           }
-                          className="rounded-[6px] bg-[#F7F5F0] border border-[#C93B3B]/50 px-2.5 py-1 text-xs font-bold text-[#18191A] focus:outline-none focus:border-[#0E4D52]"
+                          className="w-full sm:w-auto rounded-[6px] bg-[#F7F5F0] border border-[#C93B3B]/50 px-2.5 py-1.5 sm:py-1 text-xs font-bold text-[#18191A] focus:outline-none focus:border-[#0E4D52]"
                         >
                           <option value="">Selecionar responsável...</option>
                           <option value="Supervisor Financeiro">
