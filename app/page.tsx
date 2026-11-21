@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   Canal,
   Categoria,
@@ -115,20 +115,29 @@ export default function PaginaTriagemInteligente() {
   const [novoTexto, setNovoTexto] = useState<string>("");
   const [novoHorario, setNovoHorario] = useState<string>("");
 
-  // Estado de cópia e processamento em lote
+  // Estado de cópia e processamento em lote + Lock Síncrono Atômico (useRef)
   const [copiado, setCopiado] = useState<boolean>(false);
   const [carregandoLote, setCarregandoLote] = useState<boolean>(false);
+  const lockCarregamentoRef = useRef<boolean>(false);
 
-  // Carregar dados do localStorage na montagem
+  // Carregar dados do localStorage na montagem e deduplicar automaticamente registros antigos
   useEffect(() => {
     try {
       const salvas = localStorage.getItem(STORAGE_KEY_MENSAGENS);
       if (salvas) {
         const parseadas = JSON.parse(salvas) as MensagemCliente[];
         if (Array.isArray(parseadas)) {
-          setMensagens(parseadas);
-          if (parseadas.length > 0) {
-            setIdSelecionado(parseadas[0].id);
+          // Deduplicação atômica por (nome + texto) caso o navegador tenha 30 itens antigos salvos
+          const vistos = new Set<string>();
+          const unicas = parseadas.filter((m) => {
+            const chaveUnica = `${m.nome.trim().toLowerCase()}::${m.texto.trim().toLowerCase()}`;
+            if (vistos.has(chaveUnica)) return false;
+            vistos.add(chaveUnica);
+            return true;
+          });
+          setMensagens(unicas);
+          if (unicas.length > 0) {
+            setIdSelecionado(unicas[0].id);
           }
         }
       }
@@ -272,44 +281,54 @@ export default function PaginaTriagemInteligente() {
     await classificarMensagem(novaMsg, tomEmpresa, apiKeyCustom);
   };
 
-  // Carregar 15 exemplos (Operação Idempotente e Atômica: evita duplicação dos exemplos)
+  // Carregar 15 exemplos (Com Lock Síncrono Atômico via useRef contra duplo clique e deduplicação)
   const handleCarregarExemplos = async () => {
-    if (carregandoLote) return;
+    // Trava síncrona imediata: bloqueia 100% um duplo clique rápido antes mesmo do React re-renderizar
+    if (lockCarregamentoRef.current || carregandoLote) return;
+    lockCarregamentoRef.current = true;
     setCarregandoLote(true);
 
-    // IDs determinísticos ("ex-padrao-0" a "ex-padrao-14") garantem atomicidade e idempotência:
-    // nunca duplica os 15 exemplos mesmo que o botão seja clicado mais de uma vez.
-    const novasMensagens: MensagemCliente[] = EXEMPLOS_MENSAGENS.map(
-      (ex, idx) => ({
-        id: `ex-padrao-${idx}`,
-        nome: ex.nome,
-        canal: ex.canal,
-        texto: ex.texto,
-        horario: ex.horario,
-        resolvido: false,
-        statusTriagem: "pendente",
-      })
-    );
-
-    setMensagens((prev) => {
-      // Mantém apenas mensagens criadas manualmente pelo usuário, substituindo o lote de 15 exemplos de forma atômica
-      const apenasManuais = prev.filter((m) => !m.id.startsWith("ex-"));
-      return [...novasMensagens, ...apenasManuais];
-    });
-
-    if (novasMensagens.length > 0) {
-      setIdSelecionado(novasMensagens[0].id);
-    }
-
-    const tamanhoLote = 3;
-    for (let i = 0; i < novasMensagens.length; i += tamanhoLote) {
-      const lote = novasMensagens.slice(i, i + tamanhoLote);
-      await Promise.all(
-        lote.map((m) => classificarMensagem(m, tomEmpresa, apiKeyCustom))
+    try {
+      const novasMensagens: MensagemCliente[] = EXEMPLOS_MENSAGENS.map(
+        (ex, idx) => ({
+          id: `ex-padrao-${idx}`,
+          nome: ex.nome,
+          canal: ex.canal,
+          texto: ex.texto,
+          horario: ex.horario,
+          resolvido: false,
+          statusTriagem: "pendente",
+        })
       );
-    }
 
-    setCarregandoLote(false);
+      setMensagens((prev) => {
+        // Remove qualquer exemplo anterior (por ID ou por texto idêntico) mantendo apenas mensagens manuais inéditas
+        const textosExemplos = new Set(
+          EXEMPLOS_MENSAGENS.map((e) => e.texto.trim().toLowerCase())
+        );
+        const apenasManuais = prev.filter(
+          (m) =>
+            !m.id.startsWith("ex-") &&
+            !textosExemplos.has(m.texto.trim().toLowerCase())
+        );
+        return [...novasMensagens, ...apenasManuais];
+      });
+
+      if (novasMensagens.length > 0) {
+        setIdSelecionado(novasMensagens[0].id);
+      }
+
+      const tamanhoLote = 3;
+      for (let i = 0; i < novasMensagens.length; i += tamanhoLote) {
+        const lote = novasMensagens.slice(i, i + tamanhoLote);
+        await Promise.all(
+          lote.map((m) => classificarMensagem(m, tomEmpresa, apiKeyCustom))
+        );
+      }
+    } finally {
+      setCarregandoLote(false);
+      lockCarregamentoRef.current = false;
+    }
   };
 
   // Tentar novamente todas com erro
@@ -1263,10 +1282,12 @@ export default function PaginaTriagemInteligente() {
                   <button
                     type="button"
                     onClick={handleCarregarExemplos}
-                    disabled={carregandoLote}
+                    disabled={carregandoLote || exemplosJaCarregados}
                     className="btn btn-principal"
                   >
-                    Carregar 15 exemplos
+                    {exemplosJaCarregados
+                      ? "15 exemplos carregados"
+                      : "Carregar 15 exemplos"}
                   </button>
                 </div>
               </div>
