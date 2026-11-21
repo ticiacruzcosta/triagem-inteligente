@@ -23,16 +23,11 @@ import {
   Search,
   Send,
   SlidersHorizontal,
-  Sparkles,
   Trash2,
-  Wand2,
   X,
   Check,
   AlertCircle,
   Info,
-  ChevronDown,
-  ChevronUp,
-  Zap,
 } from "lucide-react";
 
 const STORAGE_KEY_MENSAGENS = "triagem_inteligente_mensagens_v1";
@@ -48,25 +43,25 @@ interface PresetPersonalidade {
 const PRESETS_PERSONALIDADE: PresetPersonalidade[] = [
   {
     id: "empatico",
-    rotulo: "Empático e Acolhedor",
+    rotulo: "Tom: Empático",
     valor:
       "Empático, acolhedor, profissional e focado em resolver o problema do cliente com transparência e agilidade.",
   },
   {
     id: "objetivo",
-    rotulo: "Rápido e Objetivo",
+    rotulo: "Tom: Objetivo",
     valor:
       "Direto ao ponto, conciso, prático e focado em instruções claras e resolução imediata sem rodeios.",
   },
   {
     id: "formal",
-    rotulo: "Formal Executivo",
+    rotulo: "Tom: Executivo",
     valor:
       "Estritamente formal, corporativo, respeitoso, utilizando linguagem executiva culta e transmitindo alta credibilidade institucional.",
   },
   {
     id: "retencao",
-    rotulo: "Retenção",
+    rotulo: "Tom: Retenção",
     valor:
       "Consultivo, altamente persuasivo e diplomático, focado em reverter insatisfações, valorizar o cliente e evitar cancelamentos.",
   },
@@ -96,21 +91,22 @@ export default function PaginaTriagemInteligente() {
   const [tomEmpresa, setTomEmpresa] = useState<string>(
     PRESETS_PERSONALIDADE[0].valor
   );
-  const [mostrarEditorTom, setMostrarEditorTom] = useState<boolean>(false);
   const [apiKeyCustom, setApiKeyCustom] = useState<string>("");
   const [mostrarConfigApi, setMostrarConfigApi] = useState<boolean>(false);
   const [modoExecucao, setModoExecucao] = useState<
     "anthropic" | "demonstracao" | null
   >(null);
 
-  // Filtros e Busca
+  // Filtros e Tabs
   const [buscaTexto, setBuscaTexto] = useState<string>("");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("Todas");
   const [filtroUrgencia, setFiltroUrgencia] = useState<string>("Todas");
   const [filtroStatus, setFiltroStatus] = useState<
     "todos" | "pendentes" | "resolvidos" | "escalar"
   >("todos");
-  const [mostrarGraficos, setMostrarGraficos] = useState<boolean>(false);
+  const [abaAtiva, setAbaAtiva] = useState<"triagem" | "analitico" | "tom">(
+    "triagem"
+  );
 
   // Modal Nova Mensagem
   const [modalAberto, setModalAberto] = useState<boolean>(false);
@@ -170,7 +166,7 @@ export default function PaginaTriagemInteligente() {
     localStorage.setItem(STORAGE_KEY_API, apiKeyCustom);
   }, [apiKeyCustom, carregadoStorage]);
 
-  // Função para classificar uma mensagem individual na API da Anthropic (ou Fallback Demo)
+  // Classificar mensagem na API
   const classificarMensagem = async (
     msg: MensagemCliente,
     tomAtual: string,
@@ -276,7 +272,7 @@ export default function PaginaTriagemInteligente() {
     await classificarMensagem(novaMsg, tomEmpresa, apiKeyCustom);
   };
 
-  // Carregar 15 exemplos e disparar triagem automática
+  // Carregar 15 exemplos
   const handleCarregarExemplos = async () => {
     if (carregandoLote) return;
     setCarregandoLote(true);
@@ -390,7 +386,7 @@ export default function PaginaTriagemInteligente() {
     localStorage.removeItem(STORAGE_KEY_MENSAGENS);
   };
 
-  // Métricas do topo e estatísticas por categoria
+  // Métricas e estatísticas
   const metricas = useMemo(() => {
     const total = mensagens.length;
     const classificadas = mensagens.filter(
@@ -421,16 +417,16 @@ export default function PaginaTriagemInteligente() {
         ? Math.round((qtdBaixa / totalClassificadas) * 100)
         : 0;
 
-    // 4 minutos economizados por mensagem triada/respondida
     const minutosEconomizados = total * 4;
     const horas = Math.floor(minutosEconomizados / 60);
     const minutosRestantes = minutosEconomizados % 60;
     const tempoFormatado =
       horas > 0
-        ? `${horas}h ${String(minutosRestantes).padStart(2, "0")}min`
+        ? `${horas}h ${String(minutosRestantes).padStart(2, "0")}m`
         : `${minutosEconomizados} min`;
 
     const qtdErros = mensagens.filter((m) => m.statusTriagem === "erro").length;
+    const qtdResolvidos = mensagens.filter((m) => m.resolvido).length;
 
     const qtdEscalar = classificadas.filter(
       (m) =>
@@ -471,6 +467,7 @@ export default function PaginaTriagemInteligente() {
       tempoFormatado,
       qtdErros,
       qtdEscalar,
+      qtdResolvidos,
       porCategoria,
       sentPositivo,
       sentNeutro,
@@ -478,7 +475,7 @@ export default function PaginaTriagemInteligente() {
     };
   }, [mensagens]);
 
-  // Lista filtrada e ordenada por urgência (Alta -> Média -> Baixa)
+  // Lista filtrada e ordenada por urgência
   const mensagensFiltradasEOrdenadas = useMemo(() => {
     const termo = buscaTexto.trim().toLowerCase();
 
@@ -550,39 +547,25 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
-  // Helper de badge de urgência (Vermelho / Amarelo / Verde) — igual ao mockup
+  // Helper de badge de urgência (Estilo ALERTS do Pin: Vermelho/Amarelo/Verde pastel)
   const renderBadgeUrgencia = (urgencia?: Urgencia) => {
     if (!urgencia) return null;
     const estilos: Record<Urgencia, string> = {
-      Alta: "bg-red-700 text-white border-red-800 shadow-xs",
-      Média: "bg-amber-300/90 text-amber-950 border-amber-400",
-      Baixa: "bg-emerald-600 text-white border-emerald-700",
+      Alta: "bg-[#EED5D2] text-[#7D1D1D] border-[#D4847C]",
+      Média: "bg-[#F3E8C8] text-[#6B4D08] border-[#D9B45B]",
+      Baixa: "bg-[#DCEADB] text-[#165B31] border-[#76B88A]",
+    };
+    const dot: Record<Urgencia, string> = {
+      Alta: "bg-[#C93B3B]",
+      Média: "bg-[#D99B16]",
+      Baixa: "bg-[#1E8E4E]",
     };
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${estilos[urgencia]}`}
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold shadow-2xs ${estilos[urgencia]}`}
       >
-        Urgência {urgencia}
-      </span>
-    );
-  };
-
-  // Helper de badge de canal colorido suave (como no mockup)
-  const renderBadgeCanal = (canal: Canal) => {
-    const estilos: Record<Canal, string> = {
-      WhatsApp: "bg-emerald-100 text-emerald-800",
-      "E-mail": "bg-sky-100 text-sky-800",
-      Chat: "bg-indigo-100 text-indigo-800",
-      Instagram: "bg-pink-100 text-pink-800",
-      Telefone: "bg-amber-100 text-amber-800",
-    };
-    return (
-      <span
-        className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
-          estilos[canal] || "bg-slate-100 text-slate-700"
-        }`}
-      >
-        {canal}
+        <span className={`h-1.5 w-1.5 rounded-full ${dot[urgencia]}`} />
+        Urgência: {urgencia}
       </span>
     );
   };
@@ -591,13 +574,13 @@ export default function PaginaTriagemInteligente() {
   const renderBadgeSentimento = (sentimento?: string) => {
     if (!sentimento) return null;
     const estilos: Record<string, string> = {
-      Positivo: "bg-emerald-100 text-emerald-800 border-emerald-200",
-      Neutro: "bg-slate-100 text-slate-700 border-slate-200",
-      Negativo: "bg-rose-100 text-rose-800 border-rose-200",
+      Positivo: "bg-[#DCEADB] text-[#165B31] border-[#76B88A]",
+      Neutro: "bg-[#E4E1DA] text-[#3D3E40] border-[#D8D5CE]",
+      Negativo: "bg-[#EED5D2] text-[#7D1D1D] border-[#D4847C]",
     };
     return (
       <span
-        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+        className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-bold shadow-2xs ${
           estilos[sentimento] || estilos.Neutro
         }`}
       >
@@ -607,500 +590,493 @@ export default function PaginaTriagemInteligente() {
   };
 
   return (
-    <div className="min-h-screen pb-12">
-      {/* CONTAINER PRINCIPAL */}
-      <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8 space-y-5">
-        {/* 1. BANNER INSTITUCIONAL SAGA (ALTO CONTRASTE E LINHA ÚNICA DE BOTÕES) */}
-        <header className="relative overflow-hidden rounded-3xl bg-[linear-gradient(110deg,#1A2332_0%,#1A2332_45%,#7C2D12_78%,#C2410C_100%)] px-6 py-7 sm:px-8 text-white shadow-lg">
-          <div className="pointer-events-none absolute -right-16 -top-24 h-72 w-72 rotate-12 rounded-3xl bg-[#F39200]/15 blur-2xl" />
-          <div className="pointer-events-none absolute right-24 -bottom-20 h-56 w-56 -rotate-12 rounded-3xl bg-[#F39200]/10 blur-xl" />
-
-          <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="space-y-2 max-w-xl">
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-bold tracking-wider text-slate-100 backdrop-blur-xs uppercase">
-                  <span>MOTOR CLAUDE ANTHROPIC</span>
-                </div>
-
-                {modoExecucao === "demonstracao" && (
-                  <span
-                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 border border-amber-300/40 px-3 py-1 text-[11px] font-semibold text-amber-200"
-                    title="Funcionando sem chave paga da Anthropic para facilitar avaliação de portfólio"
-                  >
-                    <Info className="h-3.5 w-3.5 text-amber-300" />
-                    Modo Demonstração Ativo
-                  </span>
-                )}
-              </div>
-
-              <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-                Triagem Inteligente de Suporte
-              </h1>
-              <p className="text-sm sm:text-base text-slate-200/90">
-                Classificação automática e priorização de chamados com IA
-              </p>
+    <div className="min-h-screen flex flex-col justify-between">
+      {/* RÉGUA ARQUITETÔNICA SUPERIOR (1 a 12 - IDÊNTICA AO PIN DO PINTEREST) */}
+      <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-8 pt-3 select-none">
+        <div className="grid grid-cols-12 border-b border-[#D8D5CE] pb-1 text-[10px] font-mono text-[#787877]">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between pr-2">
+              <span>{i + 1}</span>
+              <span className="h-1.5 w-px bg-[#D8D5CE]" />
             </div>
+          ))}
+        </div>
+      </div>
 
-            {/* Botões alinhados em linha única como no Mockup */}
+      {/* CONTAINER PRINCIPAL EDITORIAL */}
+      <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 py-6 sm:px-8 space-y-7">
+        {/* 1. CABEÇALHO EDITORIAL GIGANTE ("Product UI Styleguide" vibe) */}
+        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between border-b border-[#D8D5CE] pb-6">
+          <div className="space-y-2">
+            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.95]">
+              Triagem
+              <br />
+              Inteligente
+            </h1>
+            <div className="flex flex-wrap items-center gap-3 pt-1 text-xs sm:text-sm font-medium text-[#3D3E40]">
+              <span>Version 2.1 | Claude Sonnet 4</span>
+              <span className="text-[#B5B4B0]">|</span>
+              <span>Clean SaaS Monochrome</span>
+              {modoExecucao === "demonstracao" && (
+                <>
+                  <span className="text-[#B5B4B0]">|</span>
+                  <span className="chip chip-neutro text-[11px] py-0.5">
+                    Status: Modo Demo Ativo
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Botões Primary / Secondary / Tertiary + Tabs minimalistas */}
+          <div className="flex flex-col items-start lg:items-end gap-4">
             <div className="flex flex-wrap items-center gap-2.5">
               <button
                 type="button"
                 onClick={handleCarregarExemplos}
                 disabled={carregandoLote}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#F39200] hover:bg-[#ff9f14] text-[#1A2332] font-bold px-5 py-2.5 text-sm shadow-md transition-all active:scale-[0.98] disabled:opacity-60"
+                className="btn btn-principal px-5 py-2.5 text-xs"
               >
                 {carregandoLote ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-[#1A2332]" />
-                ) : null}
-                Simular 15 atendimentos
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Inbox className="h-3.5 w-3.5" />
+                )}
+                Carregar 15 exemplos
               </button>
 
               <button
                 type="button"
                 onClick={() => setModalAberto(true)}
-                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/35 font-semibold px-5 py-2.5 text-sm backdrop-blur-xs transition-all active:scale-[0.98]"
+                className="btn btn-secundario px-4 py-2.5 text-xs"
               >
-                <span>+ Novo chamado</span>
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                Adicionar mensagem
               </button>
 
               {mensagens.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setMostrarGraficos((v) => !v)}
-                    className={`inline-flex items-center justify-center gap-1.5 rounded-full border border-white/30 px-3.5 py-2.5 text-xs font-bold transition-all ${
-                      mostrarGraficos
-                        ? "bg-white text-[#1A2332]"
-                        : "bg-white/10 text-white hover:bg-white/20"
-                    }`}
-                    title="Ver gráficos por categoria e sentimento"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    <span className="hidden sm:inline">Análise</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleExportarCSV}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/30 px-3.5 py-2.5 text-xs font-bold transition-all"
-                    title="Exportar planilha CSV"
-                  >
-                    <Download className="h-4 w-4" />
-                    <span className="hidden sm:inline">CSV</span>
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={handleExportarCSV}
+                  className="btn btn-secundario px-3.5 py-2.5 text-xs"
+                  title="Exportar relatório CSV"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  CSV
+                </button>
               )}
 
               <button
                 type="button"
                 onClick={() => setMostrarConfigApi((v) => !v)}
-                className={`inline-flex items-center justify-center rounded-full border border-white/35 px-3.5 py-2.5 text-xs font-bold transition-all ${
-                  mostrarConfigApi
-                    ? "bg-white text-[#1A2332]"
-                    : "bg-white/10 text-white hover:bg-white/20"
+                className={`btn px-3.5 py-2.5 text-xs ${
+                  mostrarConfigApi ? "btn-principal" : "btn-secundario"
                 }`}
                 title="Configurar Chave da API Anthropic"
               >
-                API
+                <KeyRound className="h-3.5 w-3.5" />
+                API Key
               </button>
+            </div>
+
+            {/* TABS MINIMALISTAS COM BARRA INFERIOR #0E4D52 (IGUAL À SEÇÃO TABS DO PIN) */}
+            <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
+              {[
+                { id: "triagem", label: "Overview & Fila" },
+                { id: "tom", label: "Tom da Empresa" },
+                { id: "analitico", label: "Métricas & Categorias" },
+              ].map((tab) => {
+                const ativo = abaAtiva === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() =>
+                      setAbaAtiva(tab.id as "triagem" | "analitico" | "tom")
+                    }
+                    className={`pb-2 text-xs font-bold transition-all border-b-2 -mb-px ${
+                      ativo
+                        ? "border-[#0E4D52] text-[#18191A]"
+                        : "border-transparent text-[#787877] hover:text-[#3D3E40]"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </header>
 
-        {/* 2. PAINEL DE 4 MÉTRICAS NO TOPO (IGUAL AO MOCKUP) */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Card 1: CHAMADOS NA FILA */}
-          <div className="cartao p-5 flex flex-col justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              CHAMADOS NA FILA
-            </p>
-            <p className="mt-1 text-4xl font-extrabold text-[#1A2332]">
-              {metricas.total}
-            </p>
-            <p className="mt-1.5 text-xs font-medium text-slate-600">
-              {metricas.totalClassificadas} analisados •{" "}
-              <span
-                className={
-                  metricas.qtdEscalar > 0
-                    ? "font-bold text-red-700"
-                    : "text-slate-500"
-                }
-              >
-                {metricas.qtdEscalar} p/ escalar
-              </span>
-            </p>
+        {/* 2. MÉTRICAS NO TOPO (ESTILO "ELEVATION" + "COLOR TOKENS" DO PIN) */}
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="tabela-cab">MÉTRICAS & ELEVATION TOKENS</span>
+            <span className="text-[11px] font-mono text-[#787877]">
+              SLA Base: 4 min / resposta manual
+            </span>
           </div>
 
-          {/* Card 2: URGÊNCIA ALTA */}
-          <div className="cartao p-5 flex flex-col justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              URGÊNCIA ALTA
-            </p>
-            <div className="mt-1 flex items-center gap-2.5">
-              <span
-                className={`text-4xl font-extrabold ${
-                  metricas.qtdAlta > 0 ? "text-red-700" : "text-slate-400"
-                }`}
-              >
-                {metricas.qtdAlta}
-              </span>
-              <span
-                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  metricas.qtdAlta > 0
-                    ? "bg-red-100 text-red-800"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {metricas.pctAlta}%
-              </span>
-            </div>
-            <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-red-100/70">
-              <div
-                className="h-full rounded-full bg-red-700 transition-all duration-300"
-                style={{ width: `${metricas.pctAlta}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Card 3: TRIAGEM POR PRIORIDADE */}
-          <div className="cartao p-5 flex flex-col justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              TRIAGEM POR PRIORIDADE
-            </p>
-            <div className="mt-1.5 space-y-0.5 text-sm font-semibold text-[#1A2332]">
-              <p>
-                Média: {metricas.pctMedia}% ({metricas.qtdMedia})
-              </p>
-              <p>
-                Baixa: {metricas.pctBaixa}% ({metricas.qtdBaixa})
-              </p>
-            </div>
-            <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
-              <div
-                className="bg-red-700 transition-all duration-300"
-                style={{ width: `${metricas.pctAlta}%` }}
-                title={`Alta: ${metricas.pctAlta}%`}
-              />
-              <div
-                className="bg-[#F39200] transition-all duration-300"
-                style={{ width: `${metricas.pctMedia}%` }}
-                title={`Média: ${metricas.pctMedia}%`}
-              />
-              <div
-                className="bg-emerald-600 transition-all duration-300"
-                style={{ width: `${metricas.pctBaixa}%` }}
-                title={`Baixa: ${metricas.pctBaixa}%`}
-              />
-            </div>
-          </div>
-
-          {/* Card 4: TEMPO POUPADO */}
-          <div className="cartao p-5 flex flex-col justify-between">
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-600">
-              TEMPO POUPADO
-            </p>
-            <p className="mt-1 text-4xl font-extrabold text-[#D97706]">
-              {metricas.tempoFormatado}
-            </p>
-            <p className="mt-1.5 text-xs font-medium text-slate-600">
-              Base: 4 min por chamado
-            </p>
-          </div>
-        </section>
-
-        {/* PAINEL ANALÍTICO EXPANSÍVEL */}
-        {mostrarGraficos && mensagens.length > 0 && (
-          <section className="cartao p-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
-            <div className="lg:col-span-8 space-y-3">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-[#F39200]" />
-                Volume por Categoria de Atendimento
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {metricas.porCategoria.map((item) => (
-                  <div
-                    key={item.categoria}
-                    className="rounded-2xl bg-[#F4F6F9] p-3 border border-slate-200/60"
-                  >
-                    <div className="flex items-center justify-between text-xs font-bold text-[#1A2332]">
-                      <span>{item.categoria}</span>
-                      <span>
-                        {item.count} ({item.pct}%)
-                      </span>
-                    </div>
-                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-200">
-                      <div
-                        className="h-full bg-[#1A2332] transition-all duration-300"
-                        style={{ width: `${item.pct}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Swatch / Card 1: Primary Action Token Style */}
+            <div className="rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[116px]">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-[#DCE9F2]/80 uppercase tracking-wider">
+                <span>Total de Mensagens</span>
+                <span className="font-mono">Level 1</span>
+              </div>
+              <div className="my-1 flex items-baseline justify-between">
+                <span className="text-3xl font-extrabold tracking-tight">
+                  {metricas.total}
+                </span>
+                <span className="text-xs text-[#DCE9F2]">
+                  {metricas.totalClassificadas} triadas
+                </span>
+              </div>
+              <div className="text-[11px] text-[#DCE9F2]/90 font-medium">
+                Primary Action • {metricas.qtdResolvidos} resolvidas
               </div>
             </div>
 
-            <div className="lg:col-span-4 space-y-3 border-t lg:border-t-0 lg:border-l border-slate-100 pt-4 lg:pt-0 lg:pl-6">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Termômetro de Sentimento
-              </h3>
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between rounded-xl bg-emerald-50 px-3.5 py-2.5 text-xs font-bold text-emerald-800">
-                  <span>Positivo</span>
-                  <span>{metricas.sentPositivo} chamados</span>
+            {/* Card 2: Urgência Alta */}
+            <div className="cartao p-4 flex flex-col justify-between min-h-[116px]">
+              <div className="flex items-center justify-between">
+                <span className="tabela-cab">Urgência Alta</span>
+                <span className="font-mono text-[11px] text-[#787877]">
+                  {metricas.pctAlta}%
+                </span>
+              </div>
+              <div className="my-1 flex items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-[#18191A]">
+                  {metricas.qtdAlta}
+                </span>
+                {metricas.qtdEscalar > 0 && (
+                  <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
+                    {metricas.qtdEscalar} escalar
+                  </span>
+                )}
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#E4E1DA]">
+                <div
+                  className="h-full bg-[#C93B3B] transition-all duration-300"
+                  style={{ width: `${metricas.pctAlta}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Card 3: % por Urgência (Média & Baixa) */}
+            <div className="cartao p-4 flex flex-col justify-between min-h-[116px]">
+              <div className="flex items-center justify-between">
+                <span className="tabela-cab">% Por Urgência</span>
+                <span className="font-mono text-[11px] text-[#787877]">
+                  Dist.
+                </span>
+              </div>
+              <div className="my-1 space-y-1 text-xs font-semibold text-[#3D3E40]">
+                <div className="flex justify-between">
+                  <span>Média (Amarelo):</span>
+                  <span className="font-mono font-bold text-[#18191A]">
+                    {metricas.pctMedia}% ({metricas.qtdMedia})
+                  </span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl bg-slate-100 px-3.5 py-2.5 text-xs font-bold text-slate-700">
-                  <span>Neutro</span>
-                  <span>{metricas.sentNeutro} chamados</span>
+                <div className="flex justify-between">
+                  <span>Baixa (Verde):</span>
+                  <span className="font-mono font-bold text-[#18191A]">
+                    {metricas.pctBaixa}% ({metricas.qtdBaixa})
+                  </span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-800">
-                  <span>Negativo</span>
-                  <span>{metricas.sentNegativo} chamados</span>
-                </div>
+              </div>
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-[#E4E1DA]">
+                <div
+                  className="bg-[#C93B3B] transition-all duration-300"
+                  style={{ width: `${metricas.pctAlta}%` }}
+                />
+                <div
+                  className="bg-[#D99B16] transition-all duration-300"
+                  style={{ width: `${metricas.pctMedia}%` }}
+                />
+                <div
+                  className="bg-[#1E8E4E] transition-all duration-300"
+                  style={{ width: `${metricas.pctBaixa}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Card 4: Tempo Economizado */}
+            <div className="cartao p-4 flex flex-col justify-between min-h-[116px]">
+              <div className="flex items-center justify-between">
+                <span className="tabela-cab">Tempo Economizado</span>
+                <Clock className="h-3.5 w-3.5 text-[#0E4D52]" />
+              </div>
+              <div className="my-1">
+                <span className="text-3xl font-extrabold text-[#0E4D52] tracking-tight">
+                  {metricas.tempoFormatado}
+                </span>
+              </div>
+              <div className="text-[11px] text-[#787877] font-medium">
+                Estimativa: 4 min por resposta
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* PAINEL DE CHAVE API / TOM DA EMPRESA / ANALÍTICO QUANDO SELECIONADO */}
+        {(mostrarConfigApi || abaAtiva === "tom") && (
+          <section className="cartao p-5 space-y-4">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+              <div className="lg:col-span-7 space-y-1.5">
+                <label
+                  htmlFor="input-tom-empresa"
+                  className="tabela-cab flex items-center gap-1.5"
+                >
+                  <SlidersHorizontal className="h-3.5 w-3.5 text-[#0E4D52]" />
+                  TOM DA EMPRESA (PROMPT SYSTEM CONFIG)
+                </label>
+                <input
+                  id="input-tom-empresa"
+                  type="text"
+                  value={tomEmpresa}
+                  onChange={(e) => setTomEmpresa(e.target.value)}
+                  placeholder="Defina o tom de voz usado pela IA..."
+                  className="campo"
+                />
+              </div>
+
+              <div className="lg:col-span-5 space-y-1.5">
+                <label
+                  htmlFor="input-api-key"
+                  className="tabela-cab flex items-center gap-1.5"
+                >
+                  <KeyRound className="h-3.5 w-3.5 text-[#0E4D52]" />
+                  ANTHROPIC API KEY (OPCIONAL)
+                </label>
+                <input
+                  id="input-api-key"
+                  type="password"
+                  value={apiKeyCustom}
+                  onChange={(e) => setApiKeyCustom(e.target.value)}
+                  placeholder="sk-ant-api03-... (vazio = Modo Demonstração)"
+                  className="campo font-mono"
+                />
               </div>
             </div>
           </section>
         )}
 
-        {/* 3. BARRA COMPACTA DE PERSONALIDADE DA IA (PÍLULAS SELECIONÁVEIS COMO NO MOCKUP) */}
-        <section className="cartao px-5 py-3.5 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#1A2332] mr-1">
-                PERSONALIDADE DA IA:
+        {abaAtiva === "analitico" && (
+          <section className="cartao p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="tabela-cab flex items-center gap-1.5">
+                <BarChart3 className="h-3.5 w-3.5 text-[#0E4D52]" />
+                DISTRIBUIÇÃO POR CATEGORIA & SENTIMENTO
               </span>
-
-              {PRESETS_PERSONALIDADE.map((preset) => {
-                const selecionado = tomEmpresa === preset.valor;
-                return (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => setTomEmpresa(preset.valor)}
-                    className={`rounded-full px-4 py-1.5 text-xs font-bold transition-all ${
-                      selecionado
-                        ? "bg-[#1A2332] text-[#F39200] ring-2 ring-[#F39200]"
-                        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    {preset.rotulo}
-                  </button>
-                );
-              })}
+              <span className="text-xs text-[#787877]">
+                {metricas.totalClassificadas} chamados analisados
+              </span>
             </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {metricas.porCategoria.map((item) => (
+                <div
+                  key={item.categoria}
+                  className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3"
+                >
+                  <span className="block text-[11px] font-bold text-[#3D3E40] truncate">
+                    {item.categoria}
+                  </span>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="text-xl font-extrabold text-[#18191A]">
+                      {item.count}
+                    </span>
+                    <span className="font-mono text-[11px] text-[#0E4D52] font-bold">
+                      {item.pct}%
+                    </span>
+                  </div>
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-[#D8D5CE]">
+                    <div
+                      className="h-full bg-[#0E4D52]"
+                      style={{ width: `${item.pct}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
+        {/* ALERTA GLOBAL DE ERRO DE API (SE HOUVER) */}
+        {metricas.qtdErros > 0 && (
+          <div className="alerta-erro px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0" />
+              <span>
+                Error: Falha ao classificar {metricas.qtdErros} mensagem(ns) na
+                API.
+              </span>
+            </div>
             <button
               type="button"
-              onClick={() => setMostrarEditorTom((v) => !v)}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-[#1A2332] transition-colors"
+              onClick={handleRetentarErros}
+              disabled={carregandoLote}
+              className="btn btn-principal py-1 px-3 text-[11px]"
             >
-              <SlidersHorizontal className="h-3.5 w-3.5 text-[#F39200]" />
-              <span>Personalizar tom</span>
-              {mostrarEditorTom ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
+              <RefreshCw
+                className={`h-3 w-3 ${carregandoLote ? "animate-spin" : ""}`}
+              />
+              Tentar de novo
+            </button>
+          </div>
+        )}
+
+        {/* 3. BARRA DE CHIPS (PERSONALIDADE DA IA + FILTROS RÁPIDOS - IGUAL À SEÇÃO CHIPS DO PIN) */}
+        <section className="flex flex-wrap items-center justify-between gap-4 border-y border-[#D8D5CE] py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="tabela-cab mr-1">CHIPS / TOM DA IA:</span>
+            {PRESETS_PERSONALIDADE.map((preset) => {
+              const ativo = tomEmpresa === preset.valor;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => setTomEmpresa(preset.valor)}
+                  className={`chip ${ativo ? "chip-ativo" : "chip-neutro"}`}
+                >
+                  {preset.rotulo}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() =>
+                setAbaAtiva((a) => (a === "tom" ? "triagem" : "tom"))
+              }
+              className="chip chip-neutro"
+            >
+              Personalizar...
             </button>
           </div>
 
-          {mostrarEditorTom && (
-            <div className="pt-2 border-t border-slate-100">
-              <input
-                type="text"
-                value={tomEmpresa}
-                onChange={(e) => setTomEmpresa(e.target.value)}
-                placeholder="Descreva o tom de voz personalizado da sua empresa..."
-                className="campo text-xs"
-              />
-            </div>
-          )}
-
-          {mostrarConfigApi && (
-            <div className="pt-2 border-t border-slate-100 space-y-1.5">
-              <label
-                htmlFor="campo-api-key"
-                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#1A2332]"
-              >
-                <KeyRound className="h-3.5 w-3.5 text-[#C2410C]" />
-                Chave da API Anthropic (Opcional — deixe vazio para Modo
-                Demonstração)
-              </label>
-              <input
-                id="campo-api-key"
-                type="password"
-                value={apiKeyCustom}
-                onChange={(e) => setApiKeyCustom(e.target.value)}
-                placeholder="sk-ant-api03-..."
-                className="campo font-mono text-xs"
-              />
-            </div>
-          )}
-
-          {metricas.qtdErros > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
-                <span>
-                  Existem <strong>{metricas.qtdErros}</strong> mensagem(ns) com
-                  falha na classificação.
-                </span>
-              </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="tabela-cab mr-1">STATUS:</span>
+            {[
+              { id: "todos", label: "Filter: Todos" },
+              { id: "pendentes", label: "Status: Pendente" },
+              { id: "escalar", label: "Tag: Escalar" },
+              { id: "resolvidos", label: "Resolvidos" },
+            ].map((st) => (
               <button
+                key={st.id}
                 type="button"
-                onClick={handleRetentarErros}
-                disabled={carregandoLote}
-                className="btn bg-red-600 text-white hover:bg-red-700 py-1.5 px-4 text-xs"
+                onClick={() =>
+                  setFiltroStatus(
+                    st.id as "todos" | "pendentes" | "resolvidos" | "escalar"
+                  )
+                }
+                className={`chip ${
+                  filtroStatus === st.id ? "chip-ativo" : "chip-neutro"
+                }`}
               >
-                <RefreshCw
-                  className={`h-3.5 w-3.5 ${
-                    carregandoLote ? "animate-spin" : ""
-                  }`}
-                />
-                Tentar novamente
+                {st.label}
               </button>
-            </div>
-          )}
+            ))}
+          </div>
         </section>
 
-        {/* 4. ÁREA PRINCIPAL: FILA DE ATENDIMENTO (ESQUERDA) + PAINEL DE DETALHE (DIREITA) */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-          {/* COLUNA ESQUERDA: FILA DE ATENDIMENTO (5 COLUNAS) */}
-          <div className="lg:col-span-5 cartao p-4 space-y-3.5 flex flex-col">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-extrabold text-[#1A2332]">
-                Fila de Atendimento ({mensagensFiltradasEOrdenadas.length})
-              </h2>
-
-              {mensagens.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleLimparTudo}
-                  className="text-xs font-semibold text-slate-400 hover:text-red-600 inline-flex items-center gap-1 transition-colors"
-                  title="Limpar fila"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Limpar
-                </button>
-              )}
-            </div>
-
-            {/* Campo de Busca */}
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={buscaTexto}
-                onChange={(e) => setBuscaTexto(e.target.value)}
-                placeholder="Buscar cliente ou assunto..."
-                className="w-full rounded-full bg-white border border-slate-200 pl-9 pr-4 py-2 text-xs text-[#1A2332] placeholder-slate-400 focus:border-[#F39200] focus:outline-none"
-              />
-            </div>
-
-            {/* Pílulas de Filtro Rápido: Status | Urgência (exatamente como no Mockup) */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {[
-                { id: "todos", rotulo: "Todos" },
-                { id: "pendentes", rotulo: "Pendentes" },
-                { id: "escalar", rotulo: "Escalar Humano" },
-                { id: "resolvidos", rotulo: "Resolvidos" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() =>
-                    setFiltroStatus(
-                      tab.id as
-                        | "todos"
-                        | "pendentes"
-                        | "resolvidos"
-                        | "escalar"
-                    )
-                  }
-                  className={`rounded-full px-3 py-1 text-xs font-semibold transition-all ${
-                    filtroStatus === tab.id
-                      ? "bg-[#1A2332] text-white"
-                      : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                  }`}
-                >
-                  {tab.rotulo}
-                </button>
-              ))}
-
-              <span className="mx-0.5 h-4 w-px bg-slate-200" />
-
-              {(["Alta", "Média", "Baixa"] as Urgencia[]).map((urg) => {
-                const ativo = filtroUrgencia === urg;
-                return (
-                  <button
-                    key={urg}
-                    type="button"
-                    onClick={() =>
-                      setFiltroUrgencia((atual) =>
-                        atual === urg ? "Todas" : urg
-                      )
-                    }
-                    className={`rounded-full px-2.5 py-1 text-xs font-semibold transition-all ${
-                      ativo
-                        ? "bg-[#F39200] text-[#1A2332] font-bold"
-                        : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50"
-                    }`}
-                  >
-                    {urg}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Filtro discreto de categoria quando houver mensagens */}
-            {mensagens.length > 0 && (
-              <div className="flex items-center gap-2 pt-0.5">
-                <span className="text-[11px] font-bold uppercase text-slate-400">
-                  Categoria:
+        {/* 4. ÁREA DE TRABALHO EM 2 COLUNAS: INPUTS & LISTA (ESQUERDA) + CARDS & ALERTS (DIREITA) */}
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+          {/* COLUNA ESQUERDA: INPUTS, FILTROS E CAIXA DE ENTRADA (5 COLUNAS) */}
+          <div className="lg:col-span-5 space-y-4">
+            {/* Bloco INPUTS (Idêntico à coluna INPUTS do Pin) */}
+            <div className="cartao p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="tabela-cab">
+                  INPUTS & FILTROS ({mensagensFiltradasEOrdenadas.length})
                 </span>
-                <select
-                  value={filtroCategoria}
-                  onChange={(e) => setFiltroCategoria(e.target.value)}
-                  className="rounded-full bg-[#F4F6F9] border border-slate-200 px-3 py-1 text-xs font-semibold text-[#1A2332] focus:outline-none focus:border-[#F39200]"
-                >
-                  <option value="Todas">Todas as categorias</option>
-                  {TODAS_CATEGORIAS.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                {mensagens.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleLimparTudo}
+                    className="text-[11px] font-semibold text-[#787877] hover:text-[#7D1D1D] inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Limpar fila
+                  </button>
+                )}
               </div>
-            )}
 
-            {/* Lista de Cards de Chamados com Barra Lateral Colorida (Estilo Mockup) */}
-            <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-0.5 pt-1">
+              {/* Search Input com lupa à direita (como "Search invoices" no Pin) */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={buscaTexto}
+                  onChange={(e) => setBuscaTexto(e.target.value)}
+                  placeholder="Buscar cliente, canal ou resumo..."
+                  className="campo pr-9"
+                />
+                <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#787877]" />
+              </div>
+
+              {/* Seletores Categoria e Urgência com estilo Focused Input do Pin */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#18191A] mb-1">
+                    Categoria
+                  </label>
+                  <select
+                    value={filtroCategoria}
+                    onChange={(e) => setFiltroCategoria(e.target.value)}
+                    className="campo py-1.5 text-xs font-medium"
+                  >
+                    <option value="Todas">Todas</option>
+                    {TODAS_CATEGORIAS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-[#18191A] mb-1">
+                    Urgência
+                  </label>
+                  <select
+                    value={filtroUrgencia}
+                    onChange={(e) => setFiltroUrgencia(e.target.value)}
+                    className="campo py-1.5 text-xs font-medium"
+                  >
+                    <option value="Todas">Todas</option>
+                    <option value="Alta">Alta (Vermelho)</option>
+                    <option value="Média">Média (Amarelo)</option>
+                    <option value="Baixa">Baixa (Verde)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* LISTA DE MENSAGENS ORDENADA POR URGÊNCIA */}
+            <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
               {mensagensFiltradasEOrdenadas.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center space-y-3">
-                  <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full bg-orange-50 text-[#F39200]">
-                    <Inbox className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-[#1A2332]">
-                      {mensagens.length === 0
-                        ? "Sua fila está vazia"
-                        : "Nenhum chamado corresponde ao filtro"}
-                    </p>
-                    <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                      {mensagens.length === 0
-                        ? "Experimente simular 15 casos reais de suporte com 1 clique para ver a triagem da IA em ação."
-                        : "Altere os filtros acima para visualizar outros atendimentos."}
-                    </p>
-                  </div>
+                <div className="cartao p-8 text-center space-y-3">
+                  <p className="text-sm font-bold text-[#18191A]">
+                    {mensagens.length === 0
+                      ? "Caixa de Entrada Vazia"
+                      : "Nenhum chamado encontrado"}
+                  </p>
+                  <p className="text-xs text-[#787877] max-w-xs mx-auto leading-relaxed">
+                    {mensagens.length === 0
+                      ? "Clique no botão abaixo para carregar 15 exemplos de clientes e executar a triagem automática."
+                      : "Ajuste os filtros de categoria ou urgência acima."}
+                  </p>
                   {mensagens.length === 0 && (
-                    <button
-                      type="button"
-                      onClick={handleCarregarExemplos}
-                      disabled={carregandoLote}
-                      className="inline-flex items-center gap-2 rounded-full bg-[#F39200] hover:bg-[#e08600] text-[#1A2332] font-bold px-4 py-2 text-xs shadow-xs transition-all"
-                    >
-                      <Zap className="h-3.5 w-3.5" />
-                      Simular 15 atendimentos agora
-                    </button>
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={handleCarregarExemplos}
+                        disabled={carregandoLote}
+                        className="btn btn-principal"
+                      >
+                        Carregar 15 exemplos
+                      </button>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1110,80 +1086,69 @@ export default function PaginaTriagemInteligente() {
                     msg.analise?.urgencia === "Alta" &&
                     msg.analise?.sentimento === "Negativo";
 
-                  const corBarraLateral =
-                    msg.analise?.urgencia === "Alta"
-                      ? "bg-red-700"
-                      : msg.analise?.urgencia === "Média"
-                      ? "bg-[#F39200]"
-                      : msg.analise?.urgencia === "Baixa"
-                      ? "bg-emerald-600"
-                      : "bg-slate-300";
-
                   return (
                     <button
                       key={msg.id}
                       type="button"
                       onClick={() => setIdSelecionado(msg.id)}
-                      className={`group relative w-full text-left rounded-2xl p-3.5 pl-5 transition-all border overflow-hidden flex flex-col gap-1.5 ${
+                      className={`w-full text-left cartao p-3.5 transition-all flex flex-col gap-2 ${
                         ativo
-                          ? "bg-[#FDF3E7] border-[#E5A962] shadow-xs"
-                          : "bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/60"
-                      } ${msg.resolvido ? "opacity-65" : ""}`}
+                          ? "ring-2 ring-[#0E4D52] bg-[#FAF9F5]"
+                          : "hover:bg-[#EFECE6]/60"
+                      } ${msg.resolvido ? "opacity-60" : ""}`}
                     >
-                      {/* Barra Vertical Semântica à Esquerda */}
-                      <span
-                        className={`absolute left-1.5 top-2.5 bottom-2.5 w-1.5 rounded-full ${corBarraLateral}`}
-                      />
-
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-sm text-[#1A2332]">
+                          <span className="font-bold text-sm text-[#18191A]">
                             {msg.nome}
                           </span>
-                          {renderBadgeCanal(msg.canal)}
+                          <span className="rounded-[4px] bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40]">
+                            {msg.canal}
+                          </span>
                           {msg.resolvido && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                              <CheckCircle2 className="h-3 w-3" />
-                              Resolvido
+                            <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31]">
+                              ✓ Resolvido
                             </span>
                           )}
                         </div>
-                        <span className="text-xs font-semibold text-slate-500 shrink-0">
+                        <span className="font-mono text-[11px] text-[#787877] shrink-0">
                           {msg.horario}
                         </span>
                       </div>
 
-                      {/* Resumo da IA ou texto truncado */}
-                      <p className="text-xs text-[#1A2332] line-clamp-1 font-medium">
-                        {msg.analise?.resumo || msg.texto}
+                      <p className="text-xs text-[#3D3E40] line-clamp-2 leading-relaxed">
+                        {msg.analise?.resumo ? (
+                          <span className="font-semibold text-[#18191A]">
+                            {msg.analise.resumo}
+                          </span>
+                        ) : (
+                          msg.texto
+                        )}
                       </p>
 
-                      {/* Badges inferiores */}
                       <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
                         {msg.statusTriagem === "processando" && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 border border-orange-200 px-2.5 py-0.5 text-[11px] font-semibold text-[#C2410C]">
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                            Analisando...
+                          <span className="chip chip-neutro text-[11px] py-0.5">
+                            <Loader2 className="h-3 w-3 animate-spin text-[#0E4D52]" />
+                            Classificando...
                           </span>
                         )}
 
                         {msg.statusTriagem === "erro" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-[11px] font-semibold text-red-700">
-                            <AlertCircle className="h-3 w-3" />
-                            Falha na API
+                          <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2.5 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
+                            Erro API
                           </span>
                         )}
 
                         {msg.statusTriagem === "concluido" && msg.analise && (
                           <>
                             {renderBadgeUrgencia(msg.analise.urgencia)}
-                            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-700">
+                            <span className="chip chip-neutro text-[11px] py-0.5">
                               {msg.analise.categoria}
                             </span>
                             {escalarHumano && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 text-red-800 border border-rose-200 px-2.5 py-0.5 text-[11px] font-bold">
-                                <AlertTriangle className="h-3 w-3 text-red-700" />
-                                Escalar
+                              <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
+                                ! Escalar para humano
                               </span>
                             )}
                           </>
@@ -1196,81 +1161,117 @@ export default function PaginaTriagemInteligente() {
             </div>
           </div>
 
-          {/* COLUNA DIREITA: PAINEL DE DETALHE DO CHAMADO (7 COLUNAS) */}
-          <div className="lg:col-span-7">
+          {/* COLUNA DIREITA: ALERTS & PAINEL DE DETALHE (ESTILO "ALERTS" E "CARDS" DO PIN - 7 COLUNAS) */}
+          <div className="lg:col-span-7 space-y-4">
             {!mensagemSelecionada ? (
-              <div className="cartao p-10 sm:p-12 text-center space-y-5">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-[#F39200]">
-                  <Sparkles className="h-7 w-7" />
+              <div className="cartao p-10 text-center space-y-4">
+                <div className="mx-auto h-24 w-full max-w-md rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] flex items-center justify-center text-xs font-mono text-[#787877]">
+                  [ Selecione uma mensagem na Caixa de Entrada ]
                 </div>
-                <div className="space-y-2 max-w-md mx-auto">
-                  <h3 className="text-xl font-extrabold text-[#1A2332]">
-                    Pronto para acelerar seu suporte
+                <div className="space-y-1 max-w-md mx-auto">
+                  <h3 className="text-lg font-bold text-[#18191A]">
+                    Painel de Detalhe & Resposta IA
                   </h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">
-                    Simule 15 atendimentos reais ou adicione uma mensagem para
-                    ver a IA classificar urgência, detectar sentimento e redigir
-                    a resposta ideal.
+                  <p className="text-xs text-[#787877] leading-relaxed">
+                    Ao selecionar um cliente, você verá o texto original, a
+                    classificação validada em JSON, alertas de escalonamento e o
+                    campo editável com a resposta sugerida.
                   </p>
                 </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+                <div className="flex justify-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setModalAberto(true)}
+                    className="btn btn-secundario"
+                  >
+                    Adicionar mensagem
+                  </button>
                   <button
                     type="button"
                     onClick={handleCarregarExemplos}
                     disabled={carregandoLote}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#F39200] hover:bg-[#e08600] text-[#1A2332] font-bold px-6 py-2.5 text-sm shadow-sm transition-all"
+                    className="btn btn-principal"
                   >
-                    {carregandoLote ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Zap className="h-4 w-4" />
-                    )}
-                    Simular 15 atendimentos
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setModalAberto(true)}
-                    className="inline-flex items-center gap-2 rounded-full bg-[#F1F3F6] hover:bg-slate-200 text-[#1A2332] font-semibold px-5 py-2.5 text-sm transition-all"
-                  >
-                    + Novo chamado manual
+                    Carregar 15 exemplos
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="cartao p-6 space-y-5">
-                {/* BANNER DE ESCALONAMENTO COMPACTO E ELEGANTE (IGUAL AO MOCKUP) */}
-                {mensagemSelecionada.analise?.urgencia === "Alta" &&
-                  mensagemSelecionada.analise?.sentimento === "Negativo" && (
-                    <div className="flex items-center gap-2.5 rounded-xl bg-rose-100/90 border border-rose-200 px-4 py-3 text-xs sm:text-sm text-[#1A2332]">
-                      <AlertTriangle className="h-4 w-4 text-red-700 shrink-0" />
-                      <p>
-                        <strong className="font-extrabold text-red-800 uppercase">
-                          AÇÃO CRÍTICA:
-                        </strong>{" "}
-                        <strong className="font-bold">
-                          Escalar para humano
-                        </strong>{" "}
-                        — Urgência Alta combinada com Sentimento Negativo.
-                      </p>
+              <div className="space-y-3.5">
+                {/* SEÇÃO ALERTS (EXATAMENTE COMO OS BANNERS "ALERTS" DO PIN DO PINTEREST) */}
+                <div className="space-y-2">
+                  <span className="tabela-cab">STATUS & ALERTS</span>
+
+                  {/* Regra 5: Escalonamento (Urgência Alta + Sentimento Negativo -> Error Alert Pastel) */}
+                  {mensagemSelecionada.analise?.urgencia === "Alta" &&
+                    mensagemSelecionada.analise?.sentimento === "Negativo" && (
+                      <div className="alerta-erro px-4 py-3 flex items-center gap-3 text-xs font-bold">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C93B3B] text-white text-[11px] font-extrabold">
+                          !
+                        </span>
+                        <span>
+                          Escalar para humano: Urgência Alta combinada com
+                          Sentimento Negativo detectada.
+                        </span>
+                      </div>
+                    )}
+
+                  {/* Alerta de Resolvido (Success Alert Pastel) */}
+                  {mensagemSelecionada.resolvido && (
+                    <div className="alerta-sucesso px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
+                      <CheckCircle2 className="h-4 w-4 text-[#1E8E4E] shrink-0" />
+                      <span>
+                        Success: Este atendimento foi marcado como resolvido.
+                      </span>
                     </div>
                   )}
 
-                {/* CABEÇALHO DO CLIENTE */}
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h2 className="text-xl font-extrabold text-[#1A2332]">
-                        {mensagemSelecionada.nome}
-                      </h2>
-                      {renderBadgeCanal(mensagemSelecionada.canal)}
-                    </div>
-                    <p className="text-xs font-medium text-slate-500 mt-0.5">
-                      Recebido às {mensagemSelecionada.horario}
-                    </p>
-                  </div>
+                  {/* Alerta Informativo de Urgência Média (Warning Alert Pastel) */}
+                  {mensagemSelecionada.analise?.urgencia === "Média" &&
+                    !mensagemSelecionada.resolvido && (
+                      <div className="alerta-aviso px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
+                        <AlertTriangle className="h-4 w-4 text-[#D99B16] shrink-0" />
+                        <span>
+                          Warning: Prioridade Média — responder dentro da janela
+                          operacional do dia.
+                        </span>
+                      </div>
+                    )}
 
-                  <div className="flex items-center gap-2">
+                  {/* Alerta Info para Urgência Baixa (Info Alert Pastel) */}
+                  {mensagemSelecionada.analise?.urgencia === "Baixa" &&
+                    !mensagemSelecionada.resolvido && (
+                      <div className="alerta-info px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
+                        <Info className="h-4 w-4 text-[#1976D2] shrink-0" />
+                        <span>
+                          Info: Chamado de baixa urgência — resposta automática
+                          pronta para envio.
+                        </span>
+                      </div>
+                    )}
+                </div>
+
+                {/* CARD PRINCIPAL DE DETALHE (ESTILO "CARDS" DO PIN COM DUAL-BUTTON FOOTER) */}
+                <div className="cartao p-6 space-y-5">
+                  {/* Cabeçalho do Ticket */}
+                  <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#D8D5CE] pb-4">
+                    <div>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h2 className="text-2xl font-extrabold tracking-tight text-[#18191A]">
+                          {mensagemSelecionada.nome}
+                        </h2>
+                        <span className="rounded-[4px] bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-xs font-semibold">
+                          {mensagemSelecionada.canal}
+                        </span>
+                        <span className="font-mono text-xs text-[#787877]">
+                          {mensagemSelecionada.horario}
+                        </span>
+                      </div>
+                      <p className="text-[11px] font-mono text-[#787877] mt-1">
+                        ID: {mensagemSelecionada.id}
+                      </p>
+                    </div>
+
                     <button
                       type="button"
                       onClick={() =>
@@ -1283,7 +1284,7 @@ export default function PaginaTriagemInteligente() {
                       disabled={
                         mensagemSelecionada.statusTriagem === "processando"
                       }
-                      className="rounded-full bg-white border border-slate-200 hover:bg-slate-50 px-4 py-1.5 text-xs font-bold text-[#1A2332] inline-flex items-center gap-1.5 transition-colors"
+                      className="btn btn-secundario py-1.5 px-3 text-xs"
                     >
                       <RefreshCw
                         className={`h-3.5 w-3.5 ${
@@ -1292,155 +1293,139 @@ export default function PaginaTriagemInteligente() {
                             : ""
                         }`}
                       />
-                      Reanalisar IA
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleAlternarResolvido(mensagemSelecionada.id)
-                      }
-                      className={`rounded-full px-4 py-1.5 text-xs font-bold inline-flex items-center gap-1.5 transition-colors ${
-                        mensagemSelecionada.resolvido
-                          ? "bg-emerald-600 text-white hover:bg-emerald-700"
-                          : "bg-white border border-slate-200 hover:bg-slate-50 text-[#1A2332]"
-                      }`}
-                    >
-                      {mensagemSelecionada.resolvido
-                        ? "✓ Resolvido"
-                        : "Marcar como resolvido"}
+                      Reanalisar
                     </button>
                   </div>
-                </div>
 
-                {/* MENSAGEM ORIGINAL DO CLIENTE */}
-                <div className="space-y-1.5">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#1A2332]">
-                    MENSAGEM ORIGINAL DO CLIENTE
-                  </h3>
-                  <div className="rounded-xl bg-[#EEF2F7] p-4 text-sm text-[#1A2332] leading-relaxed">
-                    &ldquo;{mensagemSelecionada.texto}&rdquo;
-                  </div>
-                </div>
-
-                {/* ESTADO DE CARREGAMENTO OU ERRO DA IA */}
-                {mensagemSelecionada.statusTriagem === "processando" && (
-                  <div className="rounded-2xl border border-orange-200 bg-orange-50/60 p-6 text-center space-y-2">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#F39200]" />
-                    <p className="text-sm font-bold text-[#1A2332]">
-                      Classificando mensagem e gerando resposta...
-                    </p>
-                  </div>
-                )}
-
-                {mensagemSelecionada.statusTriagem === "erro" && (
-                  <div className="rounded-2xl border border-red-200 bg-red-50 p-4 space-y-3">
-                    <div className="flex items-start gap-2.5">
-                      <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-bold text-red-900">
-                          Falha ao processar triagem na API
-                        </h4>
-                        <p className="text-xs text-red-700">
-                          {mensagemSelecionada.erroMensagem}
-                        </p>
-                      </div>
+                  {/* Bloco Cinza Topo do Card (Mensagem Original - Igual ao bloco #D6D3CC do "Title card" no Pin) */}
+                  <div className="space-y-1.5">
+                    <span className="tabela-cab">TEXTO ORIGINAL DO CLIENTE</span>
+                    <div className="rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] p-4 text-sm text-[#18191A] leading-relaxed">
+                      &ldquo;{mensagemSelecionada.texto}&rdquo;
                     </div>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        classificarMensagem(
-                          mensagemSelecionada,
-                          tomEmpresa,
-                          apiKeyCustom
-                        )
-                      }
-                      className="btn bg-red-600 text-white hover:bg-red-700 py-1.5 px-4 text-xs"
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Tentar de novo
-                    </button>
                   </div>
-                )}
 
-                {/* DIAGNÓSTICO DA IA + RESPOSTA SUGERIDA (IGUAL AO MOCKUP) */}
-                {mensagemSelecionada.analise && (
-                  <div className="space-y-5">
-                    <div className="space-y-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#1A2332] mr-1">
-                          DIAGNÓSTICO DA IA
-                        </h3>
-                        {renderBadgeUrgencia(
-                          mensagemSelecionada.analise.urgencia
-                        )}
-                        <span className="inline-flex items-center rounded-full bg-slate-100 border border-slate-200 px-2.5 py-0.5 text-[11px] font-bold text-slate-700">
-                          Categoria: {mensagemSelecionada.analise.categoria}
+                  {/* Estado Processando ou Erro */}
+                  {mensagemSelecionada.statusTriagem === "processando" && (
+                    <div className="alerta-info p-4 flex items-center gap-3 text-xs font-semibold">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#0E4D52]" />
+                      <span>
+                        Consultando Claude API e validando estrutura JSON...
+                      </span>
+                    </div>
+                  )}
+
+                  {mensagemSelecionada.statusTriagem === "erro" && (
+                    <div className="alerta-erro p-4 space-y-3">
+                      <div className="flex items-start gap-2.5 text-xs">
+                        <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">
+                            Falha na comunicação com a API
+                          </p>
+                          <p className="mt-0.5">
+                            {mensagemSelecionada.erroMensagem}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          classificarMensagem(
+                            mensagemSelecionada,
+                            tomEmpresa,
+                            apiKeyCustom
+                          )
+                        }
+                        className="btn btn-principal py-1.5 px-3 text-xs"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        Tentar de novo
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ANÁLISE DA IA E RESPOSTA SUGERIDA */}
+                  {mensagemSelecionada.analise && (
+                    <div className="space-y-5">
+                      {/* Chips de Classificação */}
+                      <div className="space-y-2.5">
+                        <span className="tabela-cab">
+                          ANÁLISE ESTRUTURADA (JSON VALIDADO)
                         </span>
-                        {renderBadgeSentimento(
-                          mensagemSelecionada.analise.sentimento
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <div className="rounded-xl bg-[#EFECE6] p-3.5">
-                          <span className="block text-xs font-extrabold text-[#1A2332]">
-                            Resumo
+                        <div className="flex flex-wrap items-center gap-2">
+                          {renderBadgeUrgencia(
+                            mensagemSelecionada.analise.urgencia
+                          )}
+                          <span className="chip chip-ativo">
+                            Categoria: {mensagemSelecionada.analise.categoria}
                           </span>
-                          <p className="mt-1 text-xs sm:text-sm text-[#1A2332] leading-snug">
-                            {mensagemSelecionada.analise.resumo}
-                          </p>
+                          {renderBadgeSentimento(
+                            mensagemSelecionada.analise.sentimento
+                          )}
                         </div>
 
-                        <div className="rounded-xl bg-[#F4E3D7] p-3.5">
-                          <span className="block text-xs font-extrabold text-[#1A2332]">
-                            Justificativa de Urgência
-                          </span>
-                          <p className="mt-1 text-xs sm:text-sm text-[#1A2332] leading-snug">
-                            {mensagemSelecionada.analise.justificativaUrgencia}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
+                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3.5">
+                            <span className="tabela-cab block">
+                              Resumo (Até 15 palavras)
+                            </span>
+                            <p className="mt-1 text-xs sm:text-sm font-bold text-[#18191A] leading-snug">
+                              {mensagemSelecionada.analise.resumo}
+                            </p>
+                          </div>
 
-                    {/* RESPOSTA SUGERIDA EDITÁVEL COM BOTÃO COPIAR INTEGRADO */}
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <label
-                          htmlFor="resposta-editavel"
-                          className="text-xs font-extrabold uppercase tracking-wider text-[#1A2332]"
-                        >
-                          RESPOSTA SUGERIDA (EDITÁVEL)
-                        </label>
-
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {[
-                            { id: "curta", label: "Mais curta" },
-                            { id: "formal", label: "Mais formal" },
-                            { id: "dados", label: "+ Pedir CPF" },
-                          ].map((acao) => (
-                            <button
-                              key={acao.id}
-                              type="button"
-                              onClick={() =>
-                                classificarMensagem(
-                                  mensagemSelecionada,
-                                  tomEmpresa,
-                                  apiKeyCustom,
-                                  acao.id
-                                )
+                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3.5">
+                            <span className="tabela-cab block">
+                              Justificativa de Urgência
+                            </span>
+                            <p className="mt-1 text-xs sm:text-sm text-[#3D3E40] leading-snug">
+                              {
+                                mensagemSelecionada.analise
+                                  .justificativaUrgencia
                               }
-                              className="rounded-full bg-slate-100 hover:bg-orange-100 hover:text-[#C2410C] border border-slate-200 px-3 py-0.5 text-[11px] font-bold text-slate-700 transition-colors"
-                            >
-                              {acao.label}
-                            </button>
-                          ))}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="relative">
+                      {/* Campo Editável de Resposta Sugerida */}
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <label
+                            htmlFor="campo-resposta-ia"
+                            className="tabela-cab"
+                          >
+                            RESPOSTA SUGERIDA (CAMPO EDITÁVEL)
+                          </label>
+
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {[
+                              { id: "curta", label: "Mais curta" },
+                              { id: "formal", label: "Mais formal" },
+                              { id: "dados", label: "+ Pedir CPF" },
+                            ].map((acao) => (
+                              <button
+                                key={acao.id}
+                                type="button"
+                                onClick={() =>
+                                  classificarMensagem(
+                                    mensagemSelecionada,
+                                    tomEmpresa,
+                                    apiKeyCustom,
+                                    acao.id
+                                  )
+                                }
+                                className="chip chip-neutro text-[11px] py-0.5 px-2.5"
+                              >
+                                {acao.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         <textarea
-                          id="resposta-editavel"
+                          id="campo-resposta-ia"
                           rows={5}
                           value={
                             mensagemSelecionada.respostaEditada ??
@@ -1452,47 +1437,75 @@ export default function PaginaTriagemInteligente() {
                               e.target.value
                             )
                           }
-                          className="w-full rounded-xl bg-white border border-slate-200 p-3.5 pb-14 text-sm text-[#1A2332] leading-relaxed focus:border-[#F39200] focus:outline-none focus:ring-2 focus:ring-[#F39200]/20 resize-y"
+                          className="campo text-sm leading-relaxed resize-y"
                         />
+                      </div>
 
-                        <div className="absolute right-3 bottom-3 flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={handleCopiarResposta}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-[#1A2332] hover:bg-[#253247] text-[#F39200] ring-2 ring-[#F39200] px-4 py-1.5 text-xs font-extrabold shadow-sm transition-all active:scale-95"
-                          >
-                            {copiado ? (
-                              <>
-                                <Check className="h-3.5 w-3.5" />
-                                Copiada!
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="h-3.5 w-3.5" />
-                                Copiar resposta
-                              </>
-                            )}
-                          </button>
-                        </div>
+                      {/* RODAPÉ COM 2 BOTÕES LADO A LADO (IDÊNTICO AO "Title card" NO CANTO INFERIOR DIREITO DO PIN) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D8D5CE]">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleAlternarResolvido(mensagemSelecionada.id)
+                          }
+                          className="btn btn-secundario py-2.5 text-xs w-full"
+                        >
+                          <CheckCircle2 className="h-4 w-4 text-[#0E4D52]" />
+                          {mensagemSelecionada.resolvido
+                            ? "Desmarcar resolvido"
+                            : "Marcar como resolvido"}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleCopiarResposta}
+                          className="btn btn-principal py-2.5 text-xs w-full"
+                        >
+                          {copiado ? (
+                            <>
+                              <Check className="h-4 w-4" />
+                              Resposta copiada!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-4 w-4" />
+                              Copiar resposta
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </section>
+      </main>
 
-      {/* MODAL PARA ADICIONAR NOVO CHAMADO */}
+      {/* RÉGUA ARQUITETÔNICA INFERIOR (0 a 12 - IDÊNTICA AO RODAPÉ DO PIN DO PINTEREST) */}
+      <footer className="mx-auto w-full max-w-[1360px] px-4 sm:px-8 pb-4 pt-6 select-none">
+        <div className="grid grid-cols-12 border-t border-[#D8D5CE] pt-1.5 text-[10px] font-mono text-[#787877]">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="flex items-center justify-between pr-2">
+              <span>{i}</span>
+              <span className="h-1.5 w-px bg-[#D8D5CE]" />
+            </div>
+          ))}
+        </div>
+      </footer>
+
+      {/* MODAL PARA ADICIONAR MENSAGEM */}
       {modalAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#1A2332]/60 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#18191A]/50 p-4 backdrop-blur-[2px]">
           <div className="cartao w-full max-w-lg p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-lg font-extrabold text-[#1A2332] flex items-center gap-2">
-                <MessageSquarePlus className="h-5 w-5 text-[#F39200]" />
-                Novo Chamado de Suporte
-              </h3>
+            <div className="flex items-center justify-between border-b border-[#D8D5CE] pb-3">
+              <div>
+                <span className="tabela-cab">NOVO ATENDIMENTO</span>
+                <h3 className="text-lg font-extrabold text-[#18191A]">
+                  Adicionar Mensagem de Cliente
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setModalAberto(false)}
@@ -1505,7 +1518,7 @@ export default function PaginaTriagemInteligente() {
             <form onSubmit={handleAdicionarMensagem} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-xs font-bold text-[#18191A] mb-1">
                     Nome do Cliente *
                   </label>
                   <input
@@ -1519,7 +1532,7 @@ export default function PaginaTriagemInteligente() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                  <label className="block text-xs font-bold text-[#18191A] mb-1">
                     Canal de Atendimento
                   </label>
                   <select
@@ -1537,20 +1550,20 @@ export default function PaginaTriagemInteligente() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                <label className="block text-xs font-bold text-[#18191A] mb-1">
                   Horário (opcional)
                 </label>
                 <input
                   type="text"
                   value={novoHorario}
                   onChange={(e) => setNovoHorario(e.target.value)}
-                  placeholder="Ex: 14:35 (deixe em branco para horário atual)"
+                  placeholder="Ex: 14:35 (vazio = horário atual)"
                   className="campo"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase text-slate-500 mb-1">
+                <label className="block text-xs font-bold text-[#18191A] mb-1">
                   Mensagem do Cliente *
                 </label>
                 <textarea
@@ -1563,20 +1576,17 @@ export default function PaginaTriagemInteligente() {
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-2">
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#D8D5CE]">
                 <button
                   type="button"
                   onClick={() => setModalAberto(false)}
-                  className="btn btn-secundario"
+                  className="btn btn-secundario py-2.5"
                 >
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center gap-2 rounded-full bg-[#F39200] hover:bg-[#e08600] text-[#1A2332] font-bold px-5 py-2.5 text-sm shadow-sm transition-all"
-                >
-                  <Send className="h-4 w-4" />
-                  Analisar com IA
+                <button type="submit" className="btn btn-principal py-2.5">
+                  <Send className="h-3.5 w-3.5" />
+                  Adicionar e Classificar
                 </button>
               </div>
             </form>

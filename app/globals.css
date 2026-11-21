@@ -3,57 +3,168 @@
 @tailwind utilities;
 
 :root {
-  --saga-navy: #1A2332;
-  --saga-orange: #F39200;
-  --saga-orange-dark: #C2410C;
-  --saga-orange-amber: #B45309;
-  --saga-bg: #F4F6F9;
-  --saga-surface: #FFFFFF;
-  --saga-input: #F1F3F6;
+  --ui-canvas: #EFECE6;
+  --ui-surface: #F7F5F0;
+  --ui-surface-hover: #EDEAE3;
+  --ui-border: #D8D5CE;
+  --ui-primary: #0E4D52;
+  --ui-primary-hover: #2A6569;
+  --ui-primary-active: #08363A;
+  --ui-gray-900: #18191A;
+  --ui-gray-700: #3D3E40;
+  --ui-gray-500: #787877;
+  --ui-gray-100: #E4E1DA;
 }
 
 body {
-  background-color: var(--saga-bg);
-  color: var(--saga-navy);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--ui-canvas);
+  color: var(--ui-gray-900);
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Grade arquitetônica sutil de 12 colunas inspirada no Product UI Styleguide */
+  background-image: linear-gradient(
+    to right,
+    rgba(24, 25, 26, 0.045) 1px,
+    transparent 1px
+  );
+  background-size: calc(100% / 12) 100%;
 }
 
 @layer components {
-  /* Cartão padrão SAGA */
+  /* Card tátil do Product UI Styleguide (Elevation Level 2 / 3) */
   .cartao {
-    @apply bg-white rounded-[20px] shadow-[0_4px_20px_-4px_rgba(26,35,50,0.06)] border border-slate-100/80 transition-all duration-200;
+    background-color: #F7F5F0;
+    border: 1px solid #D8D5CE;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px -2px rgba(24, 25, 26, 0.08),
+      0 2px 4px -2px rgba(24, 25, 26, 0.05),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+    transition: all 0.18s ease;
   }
 
-  /* Botões em formato pílula */
+  /* Botões do Product UI Styleguide */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98];
+    @apply inline-flex items-center justify-center gap-2 rounded-[8px] px-4 py-2 text-xs font-semibold transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99];
   }
 
+  /* Primary Button (#0E4D52 -> Hover #2A6569 -> Active #08363A) */
   .btn-principal {
-    background: linear-gradient(135deg, #F39200 0%, #C2410C 55%, #1A2332 100%);
-    @apply text-white shadow-md hover:shadow-lg hover:brightness-105;
+    background-color: #0E4D52;
+    color: #F7F5F0;
+    border: 1px solid #08363A;
+    box-shadow: 0 2px 4px -1px rgba(14, 77, 82, 0.25),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.18);
+  }
+  .btn-principal:hover {
+    background-color: #2A6569;
+  }
+  .btn-principal:active {
+    background-color: #08363A;
+  }
+
+  /* Secondary Button (#F7F5F0 surface + #D8D5CE border) */
+  .btn-secundario {
+    background-color: #F7F5F0;
+    color: #18191A;
+    border: 1px solid #D8D5CE;
+    box-shadow: 0 2px 4px -1px rgba(24, 25, 26, 0.06),
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+  }
+  .btn-secundario:hover {
+    background-color: #E4E1DA;
+    border-color: #C7C4BC;
+  }
+  .btn-secundario:active {
+    background-color: #6D7170;
+    color: #F7F5F0;
   }
 
   .btn-escuro {
-    @apply bg-[#1A2332] text-white hover:bg-[#253247] shadow-sm;
+    background-color: #18191A;
+    color: #F7F5F0;
+    border: 1px solid #18191A;
+    box-shadow: 0 2px 4px -1px rgba(24, 25, 26, 0.2);
   }
-
-  .btn-secundario {
-    @apply bg-[#F1F3F6] text-[#1A2332] hover:bg-slate-200/80 border border-slate-200/60;
+  .btn-escuro:hover {
+    background-color: #3D3E40;
   }
 
   .btn-icone {
-    @apply inline-flex items-center justify-center rounded-full p-2.5 text-[#1A2332] bg-[#F1F3F6] hover:bg-slate-200/80 transition-colors;
+    @apply inline-flex items-center justify-center rounded-[8px] p-2 text-[#18191A] bg-[#F7F5F0] border border-[#D8D5CE] hover:bg-[#E4E1DA] transition-colors;
   }
 
-  /* Campos de formulário */
+  /* Inputs com Focus Ring #0E4D52 (1.5px) */
   .campo {
-    @apply w-full rounded-[14px] bg-[#F1F3F6] px-4 py-2.5 text-sm text-[#1A2332] placeholder-slate-400 border border-transparent focus:border-[#F39200] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#F39200]/30 transition-all;
+    background-color: #F5F3EE;
+    border: 1px solid #D8D5CE;
+    border-radius: 8px;
+    color: #18191A;
+    box-shadow: inset 0 1px 2px rgba(24, 25, 26, 0.03);
+    @apply w-full px-3.5 py-2 text-xs placeholder-[#787877] transition-all;
+  }
+  .campo:focus {
+    background-color: #FAF9F5;
+    border-color: #0E4D52;
+    outline: none;
+    box-shadow: 0 0 0 1.5px #0E4D52;
   }
 
-  /* Cabeçalho de tabela / lista */
+  /* Chips em formato pílula (Full 24px radius) */
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition-all;
+    box-shadow: 0 1px 2px rgba(24, 25, 26, 0.06);
+  }
+
+  .chip-ativo {
+    background-color: #0E4D52;
+    color: #F7F5F0;
+    border: 1px solid #08363A;
+  }
+
+  .chip-neutro {
+    background-color: #E4E1DA;
+    color: #3D3E40;
+    border: 1px solid #D8D5CE;
+  }
+  .chip-neutro:hover {
+    background-color: #D8D5CE;
+    color: #18191A;
+  }
+
+  /* Alertas Semânticos Pastel (igual à coluna ALERTS do pin) */
+  .alerta-sucesso {
+    background-color: #DCEADB;
+    border: 1px solid #76B88A;
+    color: #165B31;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -2px rgba(24, 25, 26, 0.06);
+  }
+
+  .alerta-info {
+    background-color: #DCE9F2;
+    border: 1px solid #7BAED2;
+    color: #154C79;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -2px rgba(24, 25, 26, 0.06);
+  }
+
+  .alerta-aviso {
+    background-color: #F3E8C8;
+    border: 1px solid #D9B45B;
+    color: #6B4D08;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -2px rgba(24, 25, 26, 0.06);
+  }
+
+  .alerta-erro {
+    background-color: #EED5D2;
+    border: 1px solid #D4847C;
+    color: #7D1D1D;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px -2px rgba(24, 25, 26, 0.06);
+  }
+
   .tabela-cab {
-    @apply text-xs font-bold uppercase tracking-wider text-slate-500 bg-[#F4F6F9] px-4 py-3;
+    @apply text-[11px] font-bold uppercase tracking-wider text-[#3D3E40];
   }
 }
