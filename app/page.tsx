@@ -104,9 +104,9 @@ export default function PaginaTriagemInteligente() {
   const [filtroStatus, setFiltroStatus] = useState<
     "todos" | "pendentes" | "resolvidos" | "escalar"
   >("todos");
-  const [abaAtiva, setAbaAtiva] = useState<"triagem" | "analitico" | "tom">(
-    "triagem"
-  );
+  const [abaAtiva, setAbaAtiva] = useState<
+    "triagem" | "analitico" | "configuracoes"
+  >("triagem");
 
   // Modal Nova Mensagem
   const [modalAberto, setModalAberto] = useState<boolean>(false);
@@ -717,23 +717,29 @@ export default function PaginaTriagemInteligente() {
 
               <button
                 type="button"
-                onClick={() => setMostrarConfigApi((v) => !v)}
+                onClick={() =>
+                  setAbaAtiva((a) =>
+                    a === "configuracoes" ? "triagem" : "configuracoes"
+                  )
+                }
                 className={`btn px-3.5 py-2.5 text-xs ${
-                  mostrarConfigApi ? "btn-principal" : "btn-secundario"
+                  abaAtiva === "configuracoes"
+                    ? "btn-principal"
+                    : "btn-secundario"
                 }`}
-                title="Configurar Chave da API Anthropic"
+                title="Configurar Tom da Empresa e Chave da API Anthropic"
               >
-                <KeyRound className="h-3.5 w-3.5" />
-                API Key
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Configurações
               </button>
             </div>
 
-            {/* TABS MINIMALISTAS ALINHADAS COM A LINHA DE BASE DE VERSION 2.1 */}
+            {/* TABS MINIMALISTAS */}
             <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
               {[
                 { id: "triagem", label: "Overview & Fila" },
-                { id: "tom", label: "Tom da Empresa" },
                 { id: "analitico", label: "Métricas & Categorias" },
+                { id: "configuracoes", label: "Configurações" },
               ].map((tab) => {
                 const ativo = abaAtiva === tab.id;
                 return (
@@ -741,7 +747,9 @@ export default function PaginaTriagemInteligente() {
                     key={tab.id}
                     type="button"
                     onClick={() =>
-                      setAbaAtiva(tab.id as "triagem" | "analitico" | "tom")
+                      setAbaAtiva(
+                        tab.id as "triagem" | "analitico" | "configuracoes"
+                      )
                     }
                     className={`pb-2 text-xs font-bold transition-all border-b-2 -mb-px ${
                       ativo
@@ -868,17 +876,45 @@ export default function PaginaTriagemInteligente() {
           </div>
         </section>
 
-        {/* PAINEL DE CHAVE API / TOM DA EMPRESA / ANALÍTICO QUANDO SELECIONADO */}
-        {(mostrarConfigApi || abaAtiva === "tom") && (
+        {/* PAINEL DE CONFIGURAÇÕES (TOM DA EMPRESA + CHAVE API) - SÓ EXIBIDO QUANDO A ABA CONFIGURAÇÕES ESTIVER ATIVA */}
+        {abaAtiva === "configuracoes" && (
           <section className="cartao p-5 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#D8D5CE] pb-3">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-[#0E4D52]" />
+                <span className="tabela-cab">
+                  CONFIGURAÇÕES DO SISTEMA (TOM DA EMPRESA & API)
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-semibold text-[#787877] mr-1">
+                  Modelos de tom:
+                </span>
+                {PRESETS_PERSONALIDADE.map((preset) => {
+                  const ativo = tomEmpresa === preset.valor;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setTomEmpresa(preset.valor)}
+                      className={`chip text-[11px] py-0.5 px-2.5 ${
+                        ativo ? "chip-ativo" : "chip-neutro"
+                      }`}
+                    >
+                      {preset.rotulo}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
               <div className="lg:col-span-7 space-y-1.5">
                 <label
                   htmlFor="input-tom-empresa"
                   className="tabela-cab flex items-center gap-1.5"
                 >
-                  <SlidersHorizontal className="h-3.5 w-3.5 text-[#0E4D52]" />
-                  TOM DA EMPRESA (PROMPT SYSTEM CONFIG)
+                  TOM DA EMPRESA (USADO NO PROMPT DA IA)
                 </label>
                 <input
                   id="input-tom-empresa"
@@ -974,39 +1010,6 @@ export default function PaginaTriagemInteligente() {
             </button>
           </div>
         )}
-
-        {/* 3. FAIXA EXCLUSIVA DE PERSONALIDADE DA IA (AGRUPAMENTO COERENTE POR FUNÇÃO) */}
-        <section className="flex flex-wrap items-center justify-between gap-3 border-y border-[#D8D5CE] py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="tabela-cab mr-1">PERSONALIDADE DA IA:</span>
-            {PRESETS_PERSONALIDADE.map((preset) => {
-              const ativo = tomEmpresa === preset.valor;
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => setTomEmpresa(preset.valor)}
-                  className={`chip ${ativo ? "chip-ativo" : "chip-neutro"}`}
-                >
-                  {preset.rotulo}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              onClick={() =>
-                setAbaAtiva((a) => (a === "tom" ? "triagem" : "tom"))
-              }
-              className="chip chip-neutro"
-            >
-              Personalizar...
-            </button>
-          </div>
-
-          <span className="text-[11px] font-mono text-[#787877]">
-            Prompt Ativo: <strong className="text-[#18191A]">{rotuloTomAtivo}</strong>
-          </span>
-        </section>
 
         {/* 4. ÁREA DE TRABALHO EM 2 COLUNAS COM ALINHAMENTO PERFEITO DE TOPO E BASE (5 COLS ESQUERDA | 7 COLS DIREITA) */}
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch">
