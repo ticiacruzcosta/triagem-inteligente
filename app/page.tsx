@@ -1031,8 +1031,8 @@ export default function PaginaTriagemInteligente() {
               )}
             </div>
 
-            {/* Card Unificado da Esquerda (Mesma altura total do Card da Direita) */}
-            <div className="cartao p-4 flex flex-col justify-between flex-1 lg:h-[670px]">
+            {/* Card Unificado da Esquerda */}
+            <div className="cartao p-4 flex flex-col max-h-[580px]">
               {/* Topo Fixo: Busca + Chips de Status + Seletores */}
               <div className="space-y-3 border-b border-[#D8D5CE] pb-3.5 shrink-0">
                 <div className="relative">
@@ -1238,7 +1238,7 @@ export default function PaginaTriagemInteligente() {
             </div>
 
             {!mensagemSelecionada ? (
-              <div className="cartao p-10 flex-1 lg:h-[670px] flex flex-col items-center justify-center text-center space-y-4">
+              <div className="cartao p-10 min-h-[420px] flex flex-col items-center justify-center text-center space-y-4">
                 <div className="mx-auto h-28 w-full max-w-md rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] flex items-center justify-center text-xs font-mono text-[#787877]">
                   [ Selecione uma mensagem na Caixa de Entrada ]
                 </div>
@@ -1271,7 +1271,7 @@ export default function PaginaTriagemInteligente() {
                 </div>
               </div>
             ) : (
-              <div className="cartao p-6 flex-1 lg:h-[670px] flex flex-col justify-between space-y-4 overflow-y-auto scroll-editorial">
+              <div className="cartao p-5 flex flex-col space-y-3.5">
                 <div className="space-y-4">
                   {/* ALERTA INTEGRADO DENTRO DO TOPO DO CARD (COM SELETOR DE RESPONSÁVEL) */}
                   {mensagemSelecionada.analise?.urgencia === "Alta" &&
@@ -1512,7 +1512,7 @@ export default function PaginaTriagemInteligente() {
 
                         <textarea
                           id="campo-resposta-ia"
-                          rows={5}
+                          rows={4}
                           value={
                             mensagemSelecionada.respostaEditada ??
                             mensagemSelecionada.analise.respostaSugerida
@@ -1523,16 +1523,16 @@ export default function PaginaTriagemInteligente() {
                               e.target.value
                             )
                           }
-                          className="campo scroll-editorial text-xs sm:text-sm leading-relaxed resize-none"
+                          className="campo scroll-editorial text-xs sm:text-sm leading-relaxed resize-y"
                         />
                       </div>
                     </div>
                   )}
                 </div>
 
-                {/* RODAPÉ FIXO NA BASE DO CARD COM 2 BOTÕES LADO A LADO */}
+                {/* BOTÕES LOGO ABAIXO DO CAMPO DE RESPOSTA (SEM BURACO EM BRANCO) */}
                 {mensagemSelecionada.analise && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-[#D8D5CE] shrink-0">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D8D5CE]">
                     <button
                       type="button"
                       onClick={() =>
