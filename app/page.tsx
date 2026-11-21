@@ -589,13 +589,31 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
+  const rotuloTomAtivo =
+    PRESETS_PERSONALIDADE.find((p) => p.valor === tomEmpresa)?.rotulo.replace(
+      "Tom: ",
+      ""
+    ) || "Personalizado";
+
   return (
-    <div className="min-h-screen flex flex-col justify-between">
-      {/* RÉGUA ARQUITETÔNICA SUPERIOR (1 a 12 - IDÊNTICA AO PIN DO PINTEREST) */}
-      <div className="mx-auto w-full max-w-[1360px] px-4 sm:px-8 pt-3 select-none">
+    <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden">
+      {/* GRADE ARQUITETÔNICA REAL DE 12 COLUNAS ALINHADA COM AS RÉGUAS E OS CARDS */}
+      <div className="pointer-events-none fixed inset-0 z-0 mx-auto max-w-[1360px] px-4 sm:px-8">
+        <div className="grid h-full grid-cols-12 border-x border-[#D8D5CE]/55">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div
+              key={i}
+              className="h-full border-r border-[#D8D5CE]/45 last:border-r-0"
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* RÉGUA ARQUITETÔNICA SUPERIOR (1 a 12) */}
+      <div className="relative z-10 mx-auto w-full max-w-[1360px] px-4 sm:px-8 pt-3 select-none">
         <div className="grid grid-cols-12 border-b border-[#D8D5CE] pb-1 text-[10px] font-mono text-[#787877]">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between pr-2">
+            <div key={i} className="flex items-center justify-between px-1.5">
               <span>{i + 1}</span>
               <span className="h-1.5 w-px bg-[#D8D5CE]" />
             </div>
@@ -604,16 +622,17 @@ export default function PaginaTriagemInteligente() {
       </div>
 
       {/* CONTAINER PRINCIPAL EDITORIAL */}
-      <main className="mx-auto w-full max-w-[1360px] flex-1 px-4 py-6 sm:px-8 space-y-7">
-        {/* 1. CABEÇALHO EDITORIAL GIGANTE ("Product UI Styleguide" vibe) */}
-        <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between border-b border-[#D8D5CE] pb-6">
-          <div className="space-y-2">
-            <h1 className="text-4xl sm:text-6xl font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.95]">
+      <main className="relative z-10 mx-auto w-full max-w-[1360px] flex-1 px-4 py-6 sm:px-8 space-y-6">
+        {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (TOPO COM TOPO, BASE COM BASE) */}
+        <header className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-6 items-stretch">
+          {/* Esquerda (Cols 1-6): Título Display + Subtítulo na base */}
+          <div className="lg:col-span-6 flex flex-col justify-between space-y-3">
+            <h1 className="text-4xl sm:text-[56px] font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.94]">
               Triagem
               <br />
               Inteligente
             </h1>
-            <div className="flex flex-wrap items-center gap-3 pt-1 text-xs sm:text-sm font-medium text-[#3D3E40]">
+            <div className="flex flex-wrap items-center gap-2.5 pt-1 text-xs font-medium text-[#3D3E40]">
               <span>Version 2.1 | Claude Sonnet 4</span>
               <span className="text-[#B5B4B0]">|</span>
               <span>Clean SaaS Monochrome</span>
@@ -621,16 +640,16 @@ export default function PaginaTriagemInteligente() {
                 <>
                   <span className="text-[#B5B4B0]">|</span>
                   <span className="chip chip-neutro text-[11px] py-0.5">
-                    Status: Modo Demo Ativo
+                    Modo Demo Ativo
                   </span>
                 </>
               )}
             </div>
           </div>
 
-          {/* Botões Primary / Secondary / Tertiary + Tabs minimalistas */}
-          <div className="flex flex-col items-start lg:items-end gap-4">
-            <div className="flex flex-wrap items-center gap-2.5">
+          {/* Direita (Cols 7-12): Botões alinhados no Topo + Tabs alinhadas na Base */}
+          <div className="lg:col-span-6 flex flex-col justify-between items-start lg:items-end gap-4">
+            <div className="flex flex-wrap items-center gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={handleCarregarExemplos}
@@ -679,7 +698,7 @@ export default function PaginaTriagemInteligente() {
               </button>
             </div>
 
-            {/* TABS MINIMALISTAS COM BARRA INFERIOR #0E4D52 (IGUAL À SEÇÃO TABS DO PIN) */}
+            {/* TABS MINIMALISTAS ALINHADAS COM A LINHA DE BASE DE VERSION 2.1 */}
             <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
               {[
                 { id: "triagem", label: "Overview & Fila" },
@@ -708,7 +727,7 @@ export default function PaginaTriagemInteligente() {
           </div>
         </header>
 
-        {/* 2. MÉTRICAS NO TOPO (ESTILO "ELEVATION" + "COLOR TOKENS" DO PIN) */}
+        {/* 2. MÉTRICAS NO TOPO (CADA CARD OCUPA EXATAMENTE 3 COLUNAS DA GRADE DE 12) */}
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="tabela-cab">MÉTRICAS & ELEVATION TOKENS</span>
@@ -717,9 +736,9 @@ export default function PaginaTriagemInteligente() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {/* Swatch / Card 1: Primary Action Token Style */}
-            <div className="rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[116px]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-12">
+            {/* Card 1 (Cols 1-3): Primary Action Token Style */}
+            <div className="lg:col-span-3 rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[118px]">
               <div className="flex items-center justify-between text-[11px] font-semibold text-[#DCE9F2]/80 uppercase tracking-wider">
                 <span>Total de Mensagens</span>
                 <span className="font-mono">Level 1</span>
@@ -737,8 +756,8 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Card 2: Urgência Alta */}
-            <div className="cartao p-4 flex flex-col justify-between min-h-[116px]">
+            {/* Card 2 (Cols 4-6): Urgência Alta */}
+            <div className="lg:col-span-3 cartao p-4 flex flex-col justify-between min-h-[118px]">
               <div className="flex items-center justify-between">
                 <span className="tabela-cab">Urgência Alta</span>
                 <span className="font-mono text-[11px] text-[#787877]">
@@ -763,8 +782,8 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Card 3: % por Urgência (Média & Baixa) */}
-            <div className="cartao p-4 flex flex-col justify-between min-h-[116px]">
+            {/* Card 3 (Cols 7-9): % por Urgência */}
+            <div className="lg:col-span-3 cartao p-4 flex flex-col justify-between min-h-[118px]">
               <div className="flex items-center justify-between">
                 <span className="tabela-cab">% Por Urgência</span>
                 <span className="font-mono text-[11px] text-[#787877]">
@@ -801,8 +820,8 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Card 4: Tempo Economizado */}
-            <div className="cartao p-4 flex flex-col justify-between min-h-[116px]">
+            {/* Card 4 (Cols 10-12): Tempo Economizado */}
+            <div className="lg:col-span-3 cartao p-4 flex flex-col justify-between min-h-[118px]">
               <div className="flex items-center justify-between">
                 <span className="tabela-cab">Tempo Economizado</span>
                 <Clock className="h-3.5 w-3.5 text-[#0E4D52]" />
@@ -926,10 +945,10 @@ export default function PaginaTriagemInteligente() {
           </div>
         )}
 
-        {/* 3. BARRA DE CHIPS (PERSONALIDADE DA IA + FILTROS RÁPIDOS - IGUAL À SEÇÃO CHIPS DO PIN) */}
-        <section className="flex flex-wrap items-center justify-between gap-4 border-y border-[#D8D5CE] py-3">
+        {/* 3. FAIXA EXCLUSIVA DE PERSONALIDADE DA IA (AGRUPAMENTO COERENTE POR FUNÇÃO) */}
+        <section className="flex flex-wrap items-center justify-between gap-3 border-y border-[#D8D5CE] py-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="tabela-cab mr-1">CHIPS / TOM DA IA:</span>
+            <span className="tabela-cab mr-1">PERSONALIDADE DA IA:</span>
             {PRESETS_PERSONALIDADE.map((preset) => {
               const ativo = tomEmpresa === preset.valor;
               return (
@@ -954,120 +973,127 @@ export default function PaginaTriagemInteligente() {
             </button>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="tabela-cab mr-1">STATUS:</span>
-            {[
-              { id: "todos", label: "Filter: Todos" },
-              { id: "pendentes", label: "Status: Pendente" },
-              { id: "escalar", label: "Tag: Escalar" },
-              { id: "resolvidos", label: "Resolvidos" },
-            ].map((st) => (
-              <button
-                key={st.id}
-                type="button"
-                onClick={() =>
-                  setFiltroStatus(
-                    st.id as "todos" | "pendentes" | "resolvidos" | "escalar"
-                  )
-                }
-                className={`chip ${
-                  filtroStatus === st.id ? "chip-ativo" : "chip-neutro"
-                }`}
-              >
-                {st.label}
-              </button>
-            ))}
-          </div>
+          <span className="text-[11px] font-mono text-[#787877]">
+            Prompt Ativo: <strong className="text-[#18191A]">{rotuloTomAtivo}</strong>
+          </span>
         </section>
 
-        {/* 4. ÁREA DE TRABALHO EM 2 COLUNAS: INPUTS & LISTA (ESQUERDA) + CARDS & ALERTS (DIREITA) */}
-        <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
-          {/* COLUNA ESQUERDA: INPUTS, FILTROS E CAIXA DE ENTRADA (5 COLUNAS) */}
-          <div className="lg:col-span-5 space-y-4">
-            {/* Bloco INPUTS (Idêntico à coluna INPUTS do Pin) */}
-            <div className="cartao p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="tabela-cab">
-                  INPUTS & FILTROS ({mensagensFiltradasEOrdenadas.length})
-                </span>
-                {mensagens.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={handleLimparTudo}
-                    className="text-[11px] font-semibold text-[#787877] hover:text-[#7D1D1D] inline-flex items-center gap-1 transition-colors"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                    Limpar fila
-                  </button>
-                )}
-              </div>
-
-              {/* Search Input com lupa à direita (como "Search invoices" no Pin) */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={buscaTexto}
-                  onChange={(e) => setBuscaTexto(e.target.value)}
-                  placeholder="Buscar cliente, canal ou resumo..."
-                  className="campo pr-9"
-                />
-                <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#787877]" />
-              </div>
-
-              {/* Seletores Categoria e Urgência com estilo Focused Input do Pin */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-[#18191A] mb-1">
-                    Categoria
-                  </label>
-                  <select
-                    value={filtroCategoria}
-                    onChange={(e) => setFiltroCategoria(e.target.value)}
-                    className="campo py-1.5 text-xs font-medium"
-                  >
-                    <option value="Todas">Todas</option>
-                    {TODAS_CATEGORIAS.map((cat) => (
-                      <option key={cat} value={cat}>
-                        {cat}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-[#18191A] mb-1">
-                    Urgência
-                  </label>
-                  <select
-                    value={filtroUrgencia}
-                    onChange={(e) => setFiltroUrgencia(e.target.value)}
-                    className="campo py-1.5 text-xs font-medium"
-                  >
-                    <option value="Todas">Todas</option>
-                    <option value="Alta">Alta (Vermelho)</option>
-                    <option value="Média">Média (Amarelo)</option>
-                    <option value="Baixa">Baixa (Verde)</option>
-                  </select>
-                </div>
-              </div>
+        {/* 4. ÁREA DE TRABALHO EM 2 COLUNAS COM ALINHAMENTO PERFEITO DE TOPO E BASE (5 COLS ESQUERDA | 7 COLS DIREITA) */}
+        <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch">
+          {/* COLUNA ESQUERDA (Cols 1-5): RÓTULO + CARD UNIFICADO DE CAIXA DE ENTRADA */}
+          <div className="lg:col-span-5 flex flex-col space-y-2">
+            <div className="flex items-center justify-between h-5">
+              <span className="tabela-cab">
+                CAIXA DE ENTRADA ({mensagensFiltradasEOrdenadas.length})
+              </span>
+              {mensagens.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleLimparTudo}
+                  className="text-[11px] font-semibold text-[#787877] hover:text-[#7D1D1D] inline-flex items-center gap-1 transition-colors"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  Limpar fila
+                </button>
+              )}
             </div>
 
-            {/* LISTA DE MENSAGENS ORDENADA POR URGÊNCIA */}
-            <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
-              {mensagensFiltradasEOrdenadas.length === 0 ? (
-                <div className="cartao p-8 text-center space-y-3">
-                  <p className="text-sm font-bold text-[#18191A]">
-                    {mensagens.length === 0
-                      ? "Caixa de Entrada Vazia"
-                      : "Nenhum chamado encontrado"}
-                  </p>
-                  <p className="text-xs text-[#787877] max-w-xs mx-auto leading-relaxed">
-                    {mensagens.length === 0
-                      ? "Clique no botão abaixo para carregar 15 exemplos de clientes e executar a triagem automática."
-                      : "Ajuste os filtros de categoria ou urgência acima."}
-                  </p>
-                  {mensagens.length === 0 && (
-                    <div className="pt-1">
+            {/* Card Unificado da Esquerda (Mesma altura total do Card da Direita) */}
+            <div className="cartao p-4 flex flex-col justify-between flex-1 lg:h-[670px]">
+              {/* Topo Fixo: Busca + Chips de Status + Seletores */}
+              <div className="space-y-3 border-b border-[#D8D5CE] pb-3.5 shrink-0">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={buscaTexto}
+                    onChange={(e) => setBuscaTexto(e.target.value)}
+                    placeholder="Buscar cliente, canal ou resumo..."
+                    className="campo pr-9"
+                  />
+                  <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#787877]" />
+                </div>
+
+                {/* Chips de Status integrados diretamente na Caixa de Entrada */}
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {[
+                    { id: "todos", label: "Todos" },
+                    { id: "pendentes", label: "Pendentes" },
+                    { id: "escalar", label: "Escalar" },
+                    { id: "resolvidos", label: "Resolvidos" },
+                  ].map((st) => (
+                    <button
+                      key={st.id}
+                      type="button"
+                      onClick={() =>
+                        setFiltroStatus(
+                          st.id as
+                            | "todos"
+                            | "pendentes"
+                            | "resolvidos"
+                            | "escalar"
+                        )
+                      }
+                      className={`chip text-[11px] py-0.5 px-2.5 ${
+                        filtroStatus === st.id ? "chip-ativo" : "chip-neutro"
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#3D3E40] mb-1">
+                      Categoria
+                    </label>
+                    <select
+                      value={filtroCategoria}
+                      onChange={(e) => setFiltroCategoria(e.target.value)}
+                      className="campo py-1.5 text-xs font-medium"
+                    >
+                      <option value="Todas">Todas</option>
+                      {TODAS_CATEGORIAS.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#3D3E40] mb-1">
+                      Urgência
+                    </label>
+                    <select
+                      value={filtroUrgencia}
+                      onChange={(e) => setFiltroUrgencia(e.target.value)}
+                      className="campo py-1.5 text-xs font-medium"
+                    >
+                      <option value="Todas">Todas</option>
+                      <option value="Alta">Alta (Vermelho)</option>
+                      <option value="Média">Média (Amarelo)</option>
+                      <option value="Baixa">Baixa (Verde)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lista Rolável com Scrollbar Editorial Fina */}
+              <div className="scroll-editorial flex-1 overflow-y-auto space-y-2.5 pt-3 pr-1.5">
+                {mensagensFiltradasEOrdenadas.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                    <p className="text-sm font-bold text-[#18191A]">
+                      {mensagens.length === 0
+                        ? "Caixa de Entrada Vazia"
+                        : "Nenhum chamado encontrado"}
+                    </p>
+                    <p className="text-xs text-[#787877] max-w-xs leading-relaxed">
+                      {mensagens.length === 0
+                        ? "Carregue os 15 exemplos de clientes para visualizar a triagem automática em ação."
+                        : "Ajuste os filtros selecionados acima."}
+                    </p>
+                    {mensagens.length === 0 && (
                       <button
                         type="button"
                         onClick={handleCarregarExemplos}
@@ -1076,96 +1102,105 @@ export default function PaginaTriagemInteligente() {
                       >
                         Carregar 15 exemplos
                       </button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                mensagensFiltradasEOrdenadas.map((msg) => {
-                  const ativo = msg.id === idSelecionado;
-                  const escalarHumano =
-                    msg.analise?.urgencia === "Alta" &&
-                    msg.analise?.sentimento === "Negativo";
+                    )}
+                  </div>
+                ) : (
+                  mensagensFiltradasEOrdenadas.map((msg) => {
+                    const ativo = msg.id === idSelecionado;
+                    const escalarHumano =
+                      msg.analise?.urgencia === "Alta" &&
+                      msg.analise?.sentimento === "Negativo";
 
-                  return (
-                    <button
-                      key={msg.id}
-                      type="button"
-                      onClick={() => setIdSelecionado(msg.id)}
-                      className={`w-full text-left cartao p-3.5 transition-all flex flex-col gap-2 ${
-                        ativo
-                          ? "ring-2 ring-[#0E4D52] bg-[#FAF9F5]"
-                          : "hover:bg-[#EFECE6]/60"
-                      } ${msg.resolvido ? "opacity-60" : ""}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-sm text-[#18191A]">
-                            {msg.nome}
-                          </span>
-                          <span className="rounded-[4px] bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40]">
-                            {msg.canal}
-                          </span>
-                          {msg.resolvido && (
-                            <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31]">
-                              ✓ Resolvido
+                    return (
+                      <button
+                        key={msg.id}
+                        type="button"
+                        onClick={() => setIdSelecionado(msg.id)}
+                        className={`w-full text-left rounded-[8px] p-3.5 transition-all border flex flex-col gap-1.5 ${
+                          ativo
+                            ? "border-[#0E4D52] ring-1 ring-[#0E4D52] bg-[#FAF9F5] shadow-xs"
+                            : "border-[#D8D5CE] bg-[#F5F3EE] hover:bg-[#EFECE6]"
+                        } ${msg.resolvido ? "opacity-60" : ""}`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-[#18191A]">
+                              {msg.nome}
                             </span>
-                          )}
-                        </div>
-                        <span className="font-mono text-[11px] text-[#787877] shrink-0">
-                          {msg.horario}
-                        </span>
-                      </div>
-
-                      <p className="text-xs text-[#3D3E40] line-clamp-2 leading-relaxed">
-                        {msg.analise?.resumo ? (
-                          <span className="font-semibold text-[#18191A]">
-                            {msg.analise.resumo}
-                          </span>
-                        ) : (
-                          msg.texto
-                        )}
-                      </p>
-
-                      <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
-                        {msg.statusTriagem === "processando" && (
-                          <span className="chip chip-neutro text-[11px] py-0.5">
-                            <Loader2 className="h-3 w-3 animate-spin text-[#0E4D52]" />
-                            Classificando...
-                          </span>
-                        )}
-
-                        {msg.statusTriagem === "erro" && (
-                          <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2.5 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
-                            Erro API
-                          </span>
-                        )}
-
-                        {msg.statusTriagem === "concluido" && msg.analise && (
-                          <>
-                            {renderBadgeUrgencia(msg.analise.urgencia)}
-                            <span className="chip chip-neutro text-[11px] py-0.5">
-                              {msg.analise.categoria}
+                            <span className="rounded-[4px] bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40]">
+                              {msg.canal}
                             </span>
-                            {escalarHumano && (
-                              <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
-                                ! Escalar para humano
+                            {msg.resolvido && (
+                              <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31]">
+                                ✓ Resolvido
                               </span>
                             )}
-                          </>
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+                          </div>
+                          <span className="font-mono text-[11px] text-[#787877] shrink-0">
+                            {msg.horario}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-[#3D3E40] line-clamp-2 leading-relaxed">
+                          {msg.analise?.resumo ? (
+                            <span className="font-semibold text-[#18191A]">
+                              {msg.analise.resumo}
+                            </span>
+                          ) : (
+                            msg.texto
+                          )}
+                        </p>
+
+                        <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                          {msg.statusTriagem === "processando" && (
+                            <span className="chip chip-neutro text-[11px] py-0.5">
+                              <Loader2 className="h-3 w-3 animate-spin text-[#0E4D52]" />
+                              Classificando...
+                            </span>
+                          )}
+
+                          {msg.statusTriagem === "erro" && (
+                            <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2.5 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
+                              Erro API
+                            </span>
+                          )}
+
+                          {msg.statusTriagem === "concluido" && msg.analise && (
+                            <>
+                              {renderBadgeUrgencia(msg.analise.urgencia)}
+                              <span className="chip chip-neutro text-[11px] py-0.5">
+                                {msg.analise.categoria}
+                              </span>
+                              {escalarHumano && (
+                                <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
+                                  ! Escalar para humano
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
 
-          {/* COLUNA DIREITA: ALERTS & PAINEL DE DETALHE (ESTILO "ALERTS" E "CARDS" DO PIN - 7 COLUNAS) */}
-          <div className="lg:col-span-7 space-y-4">
+          {/* COLUNA DIREITA (Cols 6-12): RÓTULO NA MESMA LINHA Y + CARD DE MESMA ALTURA */}
+          <div className="lg:col-span-7 flex flex-col space-y-2">
+            <div className="flex items-center justify-between h-5">
+              <span className="tabela-cab">PAINEL DE INSPEÇÃO & RESPOSTA</span>
+              {mensagemSelecionada && (
+                <span className="text-[11px] font-mono text-[#787877]">
+                  ID: {mensagemSelecionada.id}
+                </span>
+              )}
+            </div>
+
             {!mensagemSelecionada ? (
-              <div className="cartao p-10 text-center space-y-4">
-                <div className="mx-auto h-24 w-full max-w-md rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] flex items-center justify-center text-xs font-mono text-[#787877]">
+              <div className="cartao p-10 flex-1 lg:h-[670px] flex flex-col items-center justify-center text-center space-y-4">
+                <div className="mx-auto h-28 w-full max-w-md rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] flex items-center justify-center text-xs font-mono text-[#787877]">
                   [ Selecione uma mensagem na Caixa de Entrada ]
                 </div>
                 <div className="space-y-1 max-w-md mx-auto">
@@ -1173,9 +1208,9 @@ export default function PaginaTriagemInteligente() {
                     Painel de Detalhe & Resposta IA
                   </h3>
                   <p className="text-xs text-[#787877] leading-relaxed">
-                    Ao selecionar um cliente, você verá o texto original, a
-                    classificação validada em JSON, alertas de escalonamento e o
-                    campo editável com a resposta sugerida.
+                    Ao selecionar um cliente ao lado, você verá o texto
+                    original, a classificação validada em JSON, alertas de
+                    escalonamento e o campo editável com a resposta sugerida.
                   </p>
                 </div>
                 <div className="flex justify-center gap-3 pt-2">
@@ -1197,15 +1232,12 @@ export default function PaginaTriagemInteligente() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-3.5">
-                {/* SEÇÃO ALERTS (EXATAMENTE COMO OS BANNERS "ALERTS" DO PIN DO PINTEREST) */}
-                <div className="space-y-2">
-                  <span className="tabela-cab">STATUS & ALERTS</span>
-
-                  {/* Regra 5: Escalonamento (Urgência Alta + Sentimento Negativo -> Error Alert Pastel) */}
+              <div className="cartao p-6 flex-1 lg:h-[670px] flex flex-col justify-between space-y-4 overflow-y-auto scroll-editorial">
+                <div className="space-y-4">
+                  {/* ALERTA INTEGRADO DENTRO DO TOPO DO CARD (MANTÉM O ALINHAMENTO HORIZONTAL COM A ESQUERDA) */}
                   {mensagemSelecionada.analise?.urgencia === "Alta" &&
                     mensagemSelecionada.analise?.sentimento === "Negativo" && (
-                      <div className="alerta-erro px-4 py-3 flex items-center gap-3 text-xs font-bold">
+                      <div className="alerta-erro px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C93B3B] text-white text-[11px] font-extrabold">
                           !
                         </span>
@@ -1216,7 +1248,6 @@ export default function PaginaTriagemInteligente() {
                       </div>
                     )}
 
-                  {/* Alerta de Resolvido (Success Alert Pastel) */}
                   {mensagemSelecionada.resolvido && (
                     <div className="alerta-sucesso px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
                       <CheckCircle2 className="h-4 w-4 text-[#1E8E4E] shrink-0" />
@@ -1226,7 +1257,6 @@ export default function PaginaTriagemInteligente() {
                     </div>
                   )}
 
-                  {/* Alerta Informativo de Urgência Média (Warning Alert Pastel) */}
                   {mensagemSelecionada.analise?.urgencia === "Média" &&
                     !mensagemSelecionada.resolvido && (
                       <div className="alerta-aviso px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
@@ -1238,7 +1268,6 @@ export default function PaginaTriagemInteligente() {
                       </div>
                     )}
 
-                  {/* Alerta Info para Urgência Baixa (Info Alert Pastel) */}
                   {mensagemSelecionada.analise?.urgencia === "Baixa" &&
                     !mensagemSelecionada.resolvido && (
                       <div className="alerta-info px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
@@ -1249,27 +1278,19 @@ export default function PaginaTriagemInteligente() {
                         </span>
                       </div>
                     )}
-                </div>
 
-                {/* CARD PRINCIPAL DE DETALHE (ESTILO "CARDS" DO PIN COM DUAL-BUTTON FOOTER) */}
-                <div className="cartao p-6 space-y-5">
-                  {/* Cabeçalho do Ticket */}
-                  <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#D8D5CE] pb-4">
-                    <div>
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <h2 className="text-2xl font-extrabold tracking-tight text-[#18191A]">
-                          {mensagemSelecionada.nome}
-                        </h2>
-                        <span className="rounded-[4px] bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-xs font-semibold">
-                          {mensagemSelecionada.canal}
-                        </span>
-                        <span className="font-mono text-xs text-[#787877]">
-                          {mensagemSelecionada.horario}
-                        </span>
-                      </div>
-                      <p className="text-[11px] font-mono text-[#787877] mt-1">
-                        ID: {mensagemSelecionada.id}
-                      </p>
+                  {/* Cabeçalho do Cliente */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D8D5CE] pb-3.5">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h2 className="text-2xl font-extrabold tracking-tight text-[#18191A]">
+                        {mensagemSelecionada.nome}
+                      </h2>
+                      <span className="rounded-[4px] bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-xs font-semibold">
+                        {mensagemSelecionada.canal}
+                      </span>
+                      <span className="font-mono text-xs text-[#787877]">
+                        {mensagemSelecionada.horario}
+                      </span>
                     </div>
 
                     <button
@@ -1297,10 +1318,10 @@ export default function PaginaTriagemInteligente() {
                     </button>
                   </div>
 
-                  {/* Bloco Cinza Topo do Card (Mensagem Original - Igual ao bloco #D6D3CC do "Title card" no Pin) */}
+                  {/* Texto Original do Cliente */}
                   <div className="space-y-1.5">
                     <span className="tabela-cab">TEXTO ORIGINAL DO CLIENTE</span>
-                    <div className="rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] p-4 text-sm text-[#18191A] leading-relaxed">
+                    <div className="rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] p-3.5 text-sm text-[#18191A] leading-relaxed">
                       &ldquo;{mensagemSelecionada.texto}&rdquo;
                     </div>
                   </div>
@@ -1345,11 +1366,10 @@ export default function PaginaTriagemInteligente() {
                     </div>
                   )}
 
-                  {/* ANÁLISE DA IA E RESPOSTA SUGERIDA */}
+                  {/* Análise Estruturada e Campo Editável */}
                   {mensagemSelecionada.analise && (
-                    <div className="space-y-5">
-                      {/* Chips de Classificação */}
-                      <div className="space-y-2.5">
+                    <div className="space-y-4">
+                      <div className="space-y-2">
                         <span className="tabela-cab">
                           ANÁLISE ESTRUTURADA (JSON VALIDADO)
                         </span>
@@ -1365,8 +1385,8 @@ export default function PaginaTriagemInteligente() {
                           )}
                         </div>
 
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1">
-                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3.5">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1 items-stretch">
+                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3">
                             <span className="tabela-cab block">
                               Resumo (Até 15 palavras)
                             </span>
@@ -1375,7 +1395,7 @@ export default function PaginaTriagemInteligente() {
                             </p>
                           </div>
 
-                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3.5">
+                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3">
                             <span className="tabela-cab block">
                               Justificativa de Urgência
                             </span>
@@ -1389,8 +1409,8 @@ export default function PaginaTriagemInteligente() {
                         </div>
                       </div>
 
-                      {/* Campo Editável de Resposta Sugerida */}
-                      <div className="space-y-2">
+                      {/* Campo Editável de Resposta sem scrollbar grossa */}
+                      <div className="space-y-1.5">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <label
                             htmlFor="campo-resposta-ia"
@@ -1437,57 +1457,59 @@ export default function PaginaTriagemInteligente() {
                               e.target.value
                             )
                           }
-                          className="campo text-sm leading-relaxed resize-y"
+                          className="campo scroll-editorial text-xs sm:text-sm leading-relaxed resize-none"
                         />
-                      </div>
-
-                      {/* RODAPÉ COM 2 BOTÕES LADO A LADO (IDÊNTICO AO "Title card" NO CANTO INFERIOR DIREITO DO PIN) */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D8D5CE]">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleAlternarResolvido(mensagemSelecionada.id)
-                          }
-                          className="btn btn-secundario py-2.5 text-xs w-full"
-                        >
-                          <CheckCircle2 className="h-4 w-4 text-[#0E4D52]" />
-                          {mensagemSelecionada.resolvido
-                            ? "Desmarcar resolvido"
-                            : "Marcar como resolvido"}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={handleCopiarResposta}
-                          className="btn btn-principal py-2.5 text-xs w-full"
-                        >
-                          {copiado ? (
-                            <>
-                              <Check className="h-4 w-4" />
-                              Resposta copiada!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="h-4 w-4" />
-                              Copiar resposta
-                            </>
-                          )}
-                        </button>
                       </div>
                     </div>
                   )}
                 </div>
+
+                {/* RODAPÉ FIXO NA BASE DO CARD COM 2 BOTÕES LADO A LADO */}
+                {mensagemSelecionada.analise && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-[#D8D5CE] shrink-0">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleAlternarResolvido(mensagemSelecionada.id)
+                      }
+                      className="btn btn-secundario py-2.5 text-xs w-full"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-[#0E4D52]" />
+                      {mensagemSelecionada.resolvido
+                        ? "Desmarcar resolvido"
+                        : "Marcar como resolvido"}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCopiarResposta}
+                      className="btn btn-principal py-2.5 text-xs w-full"
+                    >
+                      {copiado ? (
+                        <>
+                          <Check className="h-4 w-4" />
+                          Resposta copiada!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-4 w-4" />
+                          Copiar resposta
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
         </section>
       </main>
 
-      {/* RÉGUA ARQUITETÔNICA INFERIOR (0 a 12 - IDÊNTICA AO RODAPÉ DO PIN DO PINTEREST) */}
-      <footer className="mx-auto w-full max-w-[1360px] px-4 sm:px-8 pb-4 pt-6 select-none">
+      {/* RÉGUA ARQUITETÔNICA INFERIOR (0 a 11) */}
+      <footer className="relative z-10 mx-auto w-full max-w-[1360px] px-4 sm:px-8 pb-4 pt-4 select-none">
         <div className="grid grid-cols-12 border-t border-[#D8D5CE] pt-1.5 text-[10px] font-mono text-[#787877]">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="flex items-center justify-between pr-2">
+            <div key={i} className="flex items-center justify-between px-1.5">
               <span>{i}</span>
               <span className="h-1.5 w-px bg-[#D8D5CE]" />
             </div>
