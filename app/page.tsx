@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import {
   Canal,
@@ -37,6 +38,8 @@ import {
   Check,
   AlertCircle,
   Info,
+  LogOut,
+  User,
 } from "lucide-react";
 
 const STORAGE_KEY_MENSAGENS = "triagem_inteligente_mensagens_v1";
@@ -94,6 +97,12 @@ const TODAS_CATEGORIAS: Categoria[] = [
 ];
 
 export default function PaginaTriagemInteligente() {
+  const router = useRouter();
+  const [usuarioLogado, setUsuarioLogado] = useState<{
+    nome: string;
+    cargo: string;
+    email: string;
+  } | null>(null);
   const [mensagens, setMensagens] = useState<MensagemCliente[]>([]);
   const [carregadoStorage, setCarregadoStorage] = useState(false);
   const [idSelecionado, setIdSelecionado] = useState<string | null>(null);
@@ -152,6 +161,24 @@ export default function PaginaTriagemInteligente() {
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
       setModalDetalheMobile(true);
     }
+  };
+
+  // Carregar usuário autenticado da sessão
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((dados) => {
+        if (dados?.usuario) {
+          setUsuarioLogado(dados.usuario);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
   };
 
   // Carregar dados salvos no localStorage com deduplicação e filtro de segurança
@@ -849,15 +876,24 @@ export default function PaginaTriagemInteligente() {
               <br />
               Inteligente
             </h1>
-            {(apiKeyCustom.trim() ||
-              (modoExecucao && modoExecucao !== "demonstracao")) && (
-              <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-[#0E4D52]">
-                <span className="h-2 w-2 rounded-full bg-[#1E8E4E]" />
-                <span>
-                  API Conectada: {INFO_PROVEDORES[provedorIA].nome}
-                </span>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              {usuarioLogado && (
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E4E1DA] border border-[#D8D5CE] px-3 py-1 text-[11px] font-semibold text-[#18191A]">
+                  <User className="h-3 w-3 text-[#0E4D52]" />
+                  <span>{usuarioLogado.nome}</span>
+                  <span className="text-[#787877]">• {usuarioLogado.cargo}</span>
+                </div>
+              )}
+              {(apiKeyCustom.trim() ||
+                (modoExecucao && modoExecucao !== "demonstracao")) && (
+                <div className="flex items-center gap-2 text-xs font-semibold text-[#0E4D52]">
+                  <span className="h-2 w-2 rounded-full bg-[#1E8E4E]" />
+                  <span>
+                    API Conectada: {INFO_PROVEDORES[provedorIA].nome}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="lg:col-span-6 flex flex-col justify-between items-stretch lg:items-end gap-4">
@@ -928,6 +964,16 @@ export default function PaginaTriagemInteligente() {
               >
                 <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
                 <span>Configurações</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="btn btn-secondary px-3 py-2.5 text-[#7D1D1D] hover:bg-[#EED5D2] hover:border-[#D4847C]"
+                title="Encerrar sessão e sair"
+              >
+                <LogOut className="h-3.5 w-3.5 shrink-0" />
+                <span>Sair</span>
               </button>
             </div>
 
