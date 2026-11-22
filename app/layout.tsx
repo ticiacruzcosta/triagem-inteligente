@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Triagem Inteligente | Suporte ao Cliente com IA",
   description:
-    "Sistema de triagem automática de mensagens de clientes, classificação de urgência e sugestão de respostas com Claude (Anthropic).",
+    "Sistema de triagem automática de mensagens de clientes, classificação de urgência e sugestão de respostas com IA Multi-LLM.",
 };
 
 export default function RootLayout({
@@ -14,9 +14,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className="min-h-screen bg-[#F4F6F9] text-[#1A2332]">
-        {children}
-      </body>
+      <body className="min-h-screen antialiased">{children}</body>
     </html>
   );
 }

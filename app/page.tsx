@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import * as XLSX from "xlsx";
 import {
   Canal,
   Categoria,
@@ -14,6 +15,7 @@ import {
   detectarInjecaoMaliciosa,
   sanitizarTextoEntrada,
   validarFormatoHorario,
+  validarNomeCliente,
 } from "@/lib/validation";
 import {
   AlertTriangle,
@@ -96,7 +98,7 @@ export default function PaginaTriagemInteligente() {
   const [carregadoStorage, setCarregadoStorage] = useState(false);
   const [idSelecionado, setIdSelecionado] = useState<string | null>(null);
 
-  // Configurações de Tom, Provedor de IA e Mapa de Chaves de API por Provedor
+  // Configurações de Tom, Provedor de IA e Chaves de API por Provedor
   const [tomEmpresa, setTomEmpresa] = useState<string>(
     PRESETS_PERSONALIDADE[0].valor
   );
@@ -119,34 +121,32 @@ export default function PaginaTriagemInteligente() {
     }));
   };
 
-  // Filtros e Tabs
+  // Filtros e Abas
   const [buscaTexto, setBuscaTexto] = useState<string>("");
   const [filtroCategoria, setFiltroCategoria] = useState<string>("Todas");
   const [filtroUrgencia, setFiltroUrgencia] = useState<string>("Todas");
   const [filtroStatus, setFiltroStatus] = useState<
-    "todos" | "pendentes" | "resolvidos" | "escalar"
+    "todos" | "resolvidos" | "escalar"
   >("todos");
   const [abaAtiva, setAbaAtiva] = useState<
     "triagem" | "analitico" | "configuracoes"
   >("triagem");
 
-  // Modal Nova Mensagem
+  // Modal Nova Mensagem e Modal Limpar Fila (3 opções)
   const [modalAberto, setModalAberto] = useState<boolean>(false);
+  const [modalLimparAberto, setModalLimparAberto] = useState<boolean>(false);
   const [novoNome, setNovoNome] = useState<string>("");
   const [novoCanal, setNovoCanal] = useState<Canal>("WhatsApp");
   const [novoTexto, setNovoTexto] = useState<string>("");
   const [novoHorario, setNovoHorario] = useState<string>("");
   const [erroFormulario, setErroFormulario] = useState<string | null>(null);
 
-  // Estado de cópia e processamento em lote + Lock Síncrono Atômico (useRef)
+  // Controle de cópia, lote síncrono atômico e mobile drawer
   const [copiado, setCopiado] = useState<boolean>(false);
   const [carregandoLote, setCarregandoLote] = useState<boolean>(false);
   const lockCarregamentoRef = useRef<boolean>(false);
-  const painelDetalheRef = useRef<HTMLDivElement | null>(null);
-
   const [modalDetalheMobile, setModalDetalheMobile] = useState<boolean>(false);
 
-  // Selecionar mensagem na lista (no celular abre uma gaveta/modal dedicada de tela cheia para leitura perfeita)
   const handleSelecionarMensagem = (id: string) => {
     setIdSelecionado(id);
     if (typeof window !== "undefined" && window.innerWidth < 1024) {
@@ -154,29 +154,40 @@ export default function PaginaTriagemInteligente() {
     }
   };
 
-  // Carregar dados do localStorage na montagem e deduplicar automaticamente registros antigos
+  // Carregar dados salvos no localStorage com deduplicação e filtro de segurança
   useEffect(() => {
     try {
       const salvas = localStorage.getItem(STORAGE_KEY_MENSAGENS);
       if (salvas) {
         const parseadas = JSON.parse(salvas) as MensagemCliente[];
         if (Array.isArray(parseadas)) {
-          // Deduplicação atômica por (nome + texto) caso o navegador tenha 30 itens antigos salvos
           const vistos = new Set<string>();
-          const unicas = parseadas.filter((m) => {
+          const unicasSeguras = parseadas.filter((m) => {
+            if (
+              detectarInjecaoMaliciosa(m.nome) ||
+              detectarInjecaoMaliciosa(m.texto)
+            ) {
+              return false;
+            }
             const chaveUnica = `${m.nome.trim().toLowerCase()}::${m.texto.trim().toLowerCase()}`;
             if (vistos.has(chaveUnica)) return false;
             vistos.add(chaveUnica);
             return true;
           });
-          setMensagens(unicas);
-          if (unicas.length > 0) {
-            setIdSelecionado(unicas[0].id);
+          setMensagens(unicasSeguras);
+          const primeiroPendente = unicasSeguras.find((m) => !m.resolvido);
+          if (primeiroPendente) {
+            setIdSelecionado(primeiroPendente.id);
+          } else if (unicasSeguras.length > 0) {
+            setIdSelecionado(unicasSeguras[0].id);
           }
         }
       }
+
       const tomSalvo = localStorage.getItem(STORAGE_KEY_TOM);
-      if (tomSalvo) setTomEmpresa(tomSalvo);
+      if (tomSalvo && !detectarInjecaoMaliciosa(tomSalvo)) {
+        setTomEmpresa(tomSalvo);
+      }
 
       const mapaApisSalvo = localStorage.getItem(STORAGE_KEY_APIS);
       if (mapaApisSalvo) {
@@ -204,7 +215,6 @@ export default function PaginaTriagemInteligente() {
     }
   }, []);
 
-  // Salvar mensagens no localStorage
   useEffect(() => {
     if (!carregadoStorage) return;
     try {
@@ -214,19 +224,16 @@ export default function PaginaTriagemInteligente() {
     }
   }, [mensagens, carregadoStorage]);
 
-  // Salvar tom da empresa
   useEffect(() => {
     if (!carregadoStorage) return;
     localStorage.setItem(STORAGE_KEY_TOM, tomEmpresa);
   }, [tomEmpresa, carregadoStorage]);
 
-  // Salvar mapa de API keys por provedor
   useEffect(() => {
     if (!carregadoStorage) return;
     localStorage.setItem(STORAGE_KEY_APIS, JSON.stringify(chavesPorProvedor));
   }, [chavesPorProvedor, carregadoStorage]);
 
-  // Salvar Provedor de IA escolhido
   useEffect(() => {
     if (!carregadoStorage) return;
     localStorage.setItem(STORAGE_KEY_PROVEDOR, provedorIA);
@@ -307,7 +314,7 @@ export default function PaginaTriagemInteligente() {
     }
   };
 
-  // Adicionar nova mensagem manual (com validação anti-SQL Injection, anti-XSS e validação estrita de horário)
+  // Adicionar nova mensagem manual com validação rigorosa (ISO 27001)
   const handleAdicionarMensagem = async (e: React.FormEvent) => {
     e.preventDefault();
     setErroFormulario(null);
@@ -320,19 +327,26 @@ export default function PaginaTriagemInteligente() {
       return;
     }
 
+    if (!validarNomeCliente(nomeLimpo)) {
+      setErroFormulario(
+        "Nome inválido (ISO 27001): utilize apenas letras, espaços, acentos, ponto ou hífen (sem símbolos ou código)."
+      );
+      return;
+    }
+
     if (
       detectarInjecaoMaliciosa(nomeLimpo) ||
       detectarInjecaoMaliciosa(textoLimpo)
     ) {
       setErroFormulario(
-        "Entrada bloqueada por segurança: comandos SQL (SELECT, DROP, OR 1=1, etc.) ou scripts não são permitidos."
+        "Entrada bloqueada por segurança (ISO 27001): código executável, SQL Injection ou script não são permitidos."
       );
       return;
     }
 
     if (!validarFormatoHorario(novoHorario)) {
       setErroFormulario(
-        "Horário inválido. Informe apenas horas e minutos válidos no formato HH:MM (ex: 14:35)."
+        "Horário inválido. Informe horas e minutos válidos no formato HH:MM (ex: 14:35)."
       );
       return;
     }
@@ -356,6 +370,7 @@ export default function PaginaTriagemInteligente() {
     };
 
     setMensagens((prev) => [novaMsg, ...prev]);
+    setFiltroStatus("todos");
     setIdSelecionado(novaMsg.id);
     setNovoNome("");
     setNovoTexto("");
@@ -366,9 +381,8 @@ export default function PaginaTriagemInteligente() {
     await classificarMensagem(novaMsg, tomEmpresa, apiKeyCustom);
   };
 
-  // Carregar 15 exemplos (Com Lock Síncrono Atômico via useRef contra duplo clique e deduplicação)
+  // Carregar 15 exemplos (operação idempotente e atômica)
   const handleCarregarExemplos = async () => {
-    // Trava síncrona imediata: bloqueia 100% um duplo clique rápido antes mesmo do React re-renderizar
     if (lockCarregamentoRef.current || carregandoLote) return;
     lockCarregamentoRef.current = true;
     setCarregandoLote(true);
@@ -387,7 +401,6 @@ export default function PaginaTriagemInteligente() {
       );
 
       setMensagens((prev) => {
-        // Remove qualquer exemplo anterior (por ID ou por texto idêntico) mantendo apenas mensagens manuais inéditas
         const textosExemplos = new Set(
           EXEMPLOS_MENSAGENS.map((e) => e.texto.trim().toLowerCase())
         );
@@ -399,6 +412,7 @@ export default function PaginaTriagemInteligente() {
         return [...novasMensagens, ...apenasManuais];
       });
 
+      setFiltroStatus("todos");
       if (novasMensagens.length > 0) {
         setIdSelecionado(novasMensagens[0].id);
       }
@@ -416,7 +430,7 @@ export default function PaginaTriagemInteligente() {
     }
   };
 
-  // Tentar novamente todas com erro
+  // Tentar novamente mensagens com erro
   const handleRetentarErros = async () => {
     const comErro = mensagens.filter((m) => m.statusTriagem === "erro");
     if (comErro.length === 0) return;
@@ -431,76 +445,73 @@ export default function PaginaTriagemInteligente() {
     setCarregandoLote(false);
   };
 
-  // Exportar relatório CSV (Compatível com Excel em Português do Brasil usando ";" como separador de colunas)
-  const handleExportarCSV = () => {
+  // Exportar planilha Excel (.xlsx) real com auto-redimensionamento de todas as colunas
+  const handleExportarExcel = () => {
     if (mensagens.length === 0) return;
-
-    const cabecalho = [
-      "ID",
-      "Cliente",
-      "Canal",
-      "Horário",
-      "Status",
-      "Categoria",
-      "Urgência",
-      "Sentimento",
-      "Definir Responsável",
-      "Responsável Atribuído",
-      "Resumo",
-      "Mensagem Original",
-      "Resposta Sugerida",
-    ];
-
-    const escaparCSV = (val: string) =>
-      `"${(val || "")
-        .replace(/"/g, '""')
-        .replace(/;/g, ",")
-        .replace(/\r?\n/g, " ")}"`;
 
     const linhas = mensagens.map((m) => {
       const definirResp =
         m.analise?.urgencia === "Alta" && m.analise?.sentimento === "Negativo"
           ? "SIM"
           : "NÃO";
-      return [
-        escaparCSV(m.id),
-        escaparCSV(m.nome),
-        escaparCSV(m.canal),
-        escaparCSV(m.horario),
-        escaparCSV(m.resolvido ? "Resolvido" : "Pendente"),
-        escaparCSV(m.analise?.categoria || "Pendente"),
-        escaparCSV(m.analise?.urgencia || "Pendente"),
-        escaparCSV(m.analise?.sentimento || "Pendente"),
-        escaparCSV(definirResp),
-        escaparCSV(m.responsavel || "Não atribuído"),
-        escaparCSV(m.analise?.resumo || ""),
-        escaparCSV(m.texto),
-        escaparCSV(m.respostaEditada ?? m.analise?.respostaSugerida ?? ""),
-      ].join(";");
+      return {
+        ID: m.id,
+        Cliente: m.nome,
+        Canal: m.canal,
+        Horário: m.horario,
+        Status: m.resolvido ? "Resolvido" : "Pendente",
+        Categoria: m.analise?.categoria || "Pendente",
+        Urgência: m.analise?.urgencia || "Pendente",
+        Sentimento: m.analise?.sentimento || "Pendente",
+        "Definir Responsável": definirResp,
+        "Responsável Atribuído": m.responsavel || "Não atribuído",
+        Resumo: m.analise?.resumo || "",
+        "Mensagem Original": m.texto,
+        "Resposta Sugerida":
+          m.respostaEditada ?? m.analise?.respostaSugerida ?? "",
+      };
     });
 
-    // "\uFEFF" (UTF-8 BOM) garante acentuação perfeita e ";" separa cada dado em sua própria coluna no Excel pt-BR
-    const conteudoCSV =
-      "\uFEFF" + [cabecalho.join(";"), ...linhas].join("\r\n");
-    const blob = new Blob([conteudoCSV], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `relatorio-triagem-${new Date().toISOString().slice(0, 10)}.csv`
+    const worksheet = XLSX.utils.json_to_sheet(linhas);
+
+    // Calcula a largura automática ideal para cada coluna sem cortar textos
+    const chaves = Object.keys(linhas[0]);
+    worksheet["!cols"] = chaves.map((chave) => {
+      const maiorTamanho = linhas.reduce((max, linha) => {
+        const valor = String(linha[chave as keyof typeof linha] ?? "");
+        return Math.max(max, valor.length);
+      }, chave.length);
+
+      // Limita entre 12 e 58 caracteres para leitura confortável no Excel
+      return { wch: Math.min(Math.max(maiorTamanho + 4, 12), 58) };
+    });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Triagem Inteligente");
+    XLSX.writeFile(
+      workbook,
+      `relatorio-triagem-${new Date().toISOString().slice(0, 10)}.xlsx`
     );
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
-  // Limpar todas as mensagens
+  // Opções de limpeza da fila (Tudo | Apenas filtro atual)
   const handleLimparTudo = () => {
     setMensagens([]);
     setIdSelecionado(null);
+    setModalDetalheMobile(false);
+    setModalLimparAberto(false);
     localStorage.removeItem(STORAGE_KEY_MENSAGENS);
+  };
+
+  const handleLimparFiltroAtual = () => {
+    const idsParaRemover = new Set(
+      mensagensFiltradasEOrdenadas.map((m) => m.id)
+    );
+    const restantes = mensagens.filter((m) => !idsParaRemover.has(m.id));
+    setMensagens(restantes);
+    setIdSelecionado(restantes.length > 0 ? restantes[0].id : null);
+    setModalDetalheMobile(false);
+    setModalLimparAberto(false);
   };
 
   // Métricas e estatísticas
@@ -582,7 +593,6 @@ export default function PaginaTriagemInteligente() {
       pctAlta,
       pctMedia,
       pctBaixa,
-      minutosEconomizados,
       tempoFormatado,
       qtdErros,
       qtdEscalar,
@@ -613,8 +623,7 @@ export default function PaginaTriagemInteligente() {
         if (filtroUrgencia !== "Todas") {
           if (m.analise?.urgencia !== filtroUrgencia) return false;
         }
-        // Chamados resolvidos saem da fila ativa (Todos / Pendentes / Definir Responsável)
-        // e só aparecem quando o filtro "Resolvidos" for explicitamente selecionado
+
         if (filtroStatus === "resolvidos") {
           if (!m.resolvido) return false;
         } else {
@@ -632,10 +641,23 @@ export default function PaginaTriagemInteligente() {
       .sort((a, b) => {
         const pesoA = a.analise ? PESO_URGENCIA[a.analise.urgencia] : 0;
         const pesoB = b.analise ? PESO_URGENCIA[b.analise.urgencia] : 0;
-        if (pesoB !== pesoA) return pesoB - pesoA;
-        return 0;
+        return pesoB - pesoA;
       });
   }, [mensagens, buscaTexto, filtroCategoria, filtroUrgencia, filtroStatus]);
+
+  // Garante que sempre exista uma referência válida selecionada quando o filtro mudar (ex: ao abrir "Resolvidos (15)")
+  useEffect(() => {
+    if (mensagensFiltradasEOrdenadas.length === 0) {
+      if (idSelecionado !== null) setIdSelecionado(null);
+      return;
+    }
+    const aindaVisivel = mensagensFiltradasEOrdenadas.some(
+      (m) => m.id === idSelecionado
+    );
+    if (!aindaVisivel) {
+      setIdSelecionado(mensagensFiltradasEOrdenadas[0].id);
+    }
+  }, [mensagensFiltradasEOrdenadas, idSelecionado]);
 
   const mensagemSelecionada = useMemo(
     () => mensagens.find((m) => m.id === idSelecionado) || null,
@@ -656,34 +678,19 @@ export default function PaginaTriagemInteligente() {
     setTimeout(() => setCopiado(false), 2500);
   };
 
-  // Alternar status de resolvido (ao resolver na fila ativa, seleciona automaticamente o próximo chamado pendente)
+  // Alternar status de resolvido (puro, sem efeitos colaterais dentro de updater)
   const handleAlternarResolvido = (id: string) => {
-    setMensagens((prev) => {
-      const atualizadas = prev.map((m) =>
-        m.id === id ? { ...m, resolvido: !m.resolvido } : m
-      );
-      const itemAlterado = atualizadas.find((m) => m.id === id);
+    const alvo = mensagens.find((m) => m.id === id);
+    if (!alvo) return;
+    const novoStatus = !alvo.resolvido;
 
-      // Se acabou de marcar como resolvido e não estamos na aba "Resolvidos", avança para o próximo da fila (e fecha modal mobile)
-      if (itemAlterado?.resolvido && filtroStatus !== "resolvidos") {
-        const proximoPendente = atualizadas.find(
-          (m) => !m.resolvido && m.id !== id
-        );
-        setIdSelecionado(proximoPendente ? proximoPendente.id : null);
-        setModalDetalheMobile(false);
-      } else if (!itemAlterado?.resolvido && filtroStatus === "resolvidos") {
-        const proximoResolvido = atualizadas.find(
-          (m) => m.resolvido && m.id !== id
-        );
-        setIdSelecionado(proximoResolvido ? proximoResolvido.id : null);
-        setModalDetalheMobile(false);
-      }
+    setMensagens((prev) =>
+      prev.map((m) => (m.id === id ? { ...m, resolvido: novoStatus } : m))
+    );
 
-      return atualizadas;
-    });
+    setModalDetalheMobile(false);
   };
 
-  // Atualizar texto editado da resposta
   const handleEditarResposta = (id: string, novoValor: string) => {
     setMensagens((prev) =>
       prev.map((m) =>
@@ -692,7 +699,7 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
-  // Refinar a resposta de forma CUMULATIVA (preservando os ajustes anteriores como +CPF, Mais formal ou Mais curta)
+  // Refinar resposta de forma cumulativa preservando contexto e ajustes
   const handleRefinarResposta = (
     msg: MensagemCliente,
     tipo: "curta" | "formal" | "dados" | "original"
@@ -712,12 +719,10 @@ export default function PaginaTriagemInteligente() {
       textoAtual.toLowerCase().includes("cpf") ||
       textoAtual.toLowerCase().includes("cnpj");
 
-    // 1. Se clicou em "+ Pedir CPF", apenas adiciona (ou mantém) a solicitação de CPF no texto atual sem perder se já estava curto ou formal!
     if (tipo === "dados") {
       if (jaTemCPF) return;
       const paragrafos = textoAtual.split(/\n\n+/);
       if (paragrafos.length >= 2) {
-        // Insere antes da despedida/assinatura final
         const antesAssinatura = paragrafos.slice(0, -1).join("\n\n");
         const assinatura = paragrafos[paragrafos.length - 1];
         handleEditarResposta(
@@ -730,14 +735,12 @@ export default function PaginaTriagemInteligente() {
       return;
     }
 
-    // Extrai o parágrafo principal original da IA para transformar sem perder o contexto específico do caso
     const paragrafosOriginais = baseOriginal.split(/\n\n+/);
     const mioloOriginal =
       paragrafosOriginais.length >= 3
         ? paragrafosOriginais[1]
         : paragrafosOriginais[0];
 
-    // 2. Se clicou em "Mais curta", resume mantendo o assunto real + mantém o pedido de CPF se o usuário já tinha clicado em "+ Pedir CPF"!
     if (tipo === "curta") {
       const primeiraFrase =
         mioloOriginal.split(/(?<=[.!?])\s+/)[0] || mioloOriginal;
@@ -750,7 +753,6 @@ export default function PaginaTriagemInteligente() {
       return;
     }
 
-    // 3. Se clicou em "Mais formal", aplica saudação e fechamento executivos mantendo o miolo real do problema + mantém o CPF se já estava ativo!
     if (tipo === "formal") {
       let novoTexto = `Prezado(a) ${msg.nome},\n\n${mioloOriginal}`;
       if (jaTemCPF) {
@@ -758,11 +760,9 @@ export default function PaginaTriagemInteligente() {
       }
       novoTexto += `\n\nPermanecemos à inteira disposição por meio do canal ${msg.canal}.\nCordialmente,\nCentral de Relacionamento com o Cliente.`;
       handleEditarResposta(msg.id, novoTexto);
-      return;
     }
   };
 
-  // Definir responsável pelo chamado
   const handleDefinirResponsavel = (id: string, responsavel: string) => {
     setMensagens((prev) =>
       prev.map((m) =>
@@ -773,7 +773,6 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
-  // Helper de badge de urgência (Estilo ALERTS do Pin: Vermelho/Amarelo/Verde pastel)
   const renderBadgeUrgencia = (urgencia?: Urgencia) => {
     if (!urgencia) return null;
     const estilos: Record<Urgencia, string> = {
@@ -796,7 +795,6 @@ export default function PaginaTriagemInteligente() {
     );
   };
 
-  // Helper de badge de sentimento
   const renderBadgeSentimento = (sentimento?: string) => {
     if (!sentimento) return null;
     const estilos: Record<string, string> = {
@@ -820,15 +818,15 @@ export default function PaginaTriagemInteligente() {
     [mensagens]
   );
 
-  const rotuloTomAtivo =
-    PRESETS_PERSONALIDADE.find((p) => p.valor === tomEmpresa)?.rotulo.replace(
-      "Tom: ",
-      ""
-    ) || "Personalizado";
+  const temFiltroAtivo =
+    buscaTexto.trim() !== "" ||
+    filtroCategoria !== "Todas" ||
+    filtroUrgencia !== "Todas" ||
+    filtroStatus !== "todos";
 
   return (
     <div className="relative min-h-screen flex flex-col justify-between overflow-x-hidden">
-      {/* GRADE ARQUITETÔNICA REAL DE 12 COLUNAS (4 COLUNAS NO CELULAR, 12 NO DESKTOP) */}
+      {/* Grade arquitetônica responsiva */}
       <div className="pointer-events-none fixed inset-0 z-0 w-full px-3 sm:px-6 lg:px-8">
         <div className="grid h-full grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 border-x border-[#D8D5CE]/55">
           {Array.from({ length: 12 }).map((_, i) => (
@@ -842,11 +840,9 @@ export default function PaginaTriagemInteligente() {
         </div>
       </div>
 
-      {/* CONTAINER PRINCIPAL EDITORIAL EM LARGURA TOTAL */}
       <main className="relative z-10 w-full flex-1 px-3 py-4 sm:px-6 sm:py-6 lg:px-8 space-y-5 sm:space-y-6">
-        {/* 1. CABEÇALHO EDITORIAL EQUILIBRADO NOS 4 CANTOS (RESPONSIVO MOBILE & DESKTOP) */}
+        {/* 1. CABEÇALHO */}
         <header className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-12 border-b border-[#D8D5CE] pb-5 sm:pb-6 items-stretch">
-          {/* Esquerda (Cols 1-6): Título Display + Status da API quando conectada */}
           <div className="lg:col-span-6 flex flex-col justify-between space-y-2">
             <h1 className="text-3xl sm:text-5xl lg:text-[56px] font-extrabold tracking-[-0.035em] text-[#18191A] leading-[0.95]">
               Triagem
@@ -864,14 +860,13 @@ export default function PaginaTriagemInteligente() {
             )}
           </div>
 
-          {/* Direita (Cols 7-12): Botões adaptáveis em Grid no Celular + Flex no Desktop */}
           <div className="lg:col-span-6 flex flex-col justify-between items-stretch lg:items-end gap-4">
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={handleCarregarExemplos}
                 disabled={carregandoLote || exemplosJaCarregados}
-                className="btn btn-principal px-3.5 sm:px-5 py-2.5 text-xs w-full sm:w-auto"
+                className="btn btn-primary px-3.5 sm:px-5 py-2.5 w-full sm:w-auto"
                 title={
                   exemplosJaCarregados
                     ? "Os 15 exemplos já foram carregados na fila"
@@ -899,7 +894,7 @@ export default function PaginaTriagemInteligente() {
               <button
                 type="button"
                 onClick={() => setModalAberto(true)}
-                className="btn btn-secundario px-3.5 sm:px-4 py-2.5 text-xs w-full sm:w-auto"
+                className="btn btn-secondary px-3.5 sm:px-4 py-2.5 w-full sm:w-auto"
               >
                 <MessageSquarePlus className="h-3.5 w-3.5 shrink-0" />
                 <span className="truncate">Adicionar mensagem</span>
@@ -908,12 +903,12 @@ export default function PaginaTriagemInteligente() {
               {mensagens.length > 0 && (
                 <button
                   type="button"
-                  onClick={handleExportarCSV}
-                  className="btn btn-secundario px-3.5 py-2.5 text-xs w-full sm:w-auto"
-                  title="Exportar relatório CSV"
+                  onClick={handleExportarExcel}
+                  className="btn btn-secondary px-3.5 py-2.5 w-full sm:w-auto"
+                  title="Exportar planilha Excel (.xlsx)"
                 >
                   <Download className="h-3.5 w-3.5 shrink-0" />
-                  <span>Exportar CSV</span>
+                  <span>Exportar Excel</span>
                 </button>
               )}
 
@@ -924,19 +919,18 @@ export default function PaginaTriagemInteligente() {
                     a === "configuracoes" ? "triagem" : "configuracoes"
                   )
                 }
-                className={`btn px-3.5 py-2.5 text-xs w-full sm:w-auto ${
+                className={`btn px-3.5 py-2.5 w-full sm:w-auto ${
                   abaAtiva === "configuracoes"
-                    ? "btn-principal"
-                    : "btn-secundario"
+                    ? "btn-primary"
+                    : "btn-secondary"
                 } ${mensagens.length === 0 ? "col-span-2 sm:col-span-1" : ""}`}
-                title="Configurar Tom da Empresa e Chave da API"
+                title="Configurar Tom da Empresa e Provedor de IA"
               >
                 <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
                 <span>Configurações</span>
               </button>
             </div>
 
-            {/* TABS MINIMALISTAS */}
             <div className="flex items-center gap-6 border-b border-[#D8D5CE] w-full lg:w-auto">
               {[
                 { id: "triagem", label: "Fila de Atendimento" },
@@ -964,10 +958,9 @@ export default function PaginaTriagemInteligente() {
           </div>
         </header>
 
-        {/* 2. MÉTRICAS NO TOPO (2x2 COMPACTO NO CELULAR, 4 COLUNAS NO DESKTOP) */}
+        {/* 2. MÉTRICAS NO TOPO */}
         <section>
           <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-12">
-            {/* Card 1 (Cols 1-3): Primary Action Token Style */}
             <div className="lg:col-span-3 rounded-[10px] bg-[#0E4D52] text-[#F7F5F0] p-3.5 sm:p-4 border border-[#08363A] shadow-[0_4px_8px_-2px_rgba(14,77,82,0.25)] flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-semibold text-[#DCE9F2]/80 uppercase tracking-wider">
                 <span className="truncate">Total na Fila</span>
@@ -985,10 +978,9 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Card 2 (Cols 4-6): Urgência Alta */}
-            <div className="lg:col-span-3 cartao p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
+            <div className="lg:col-span-3 card p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between">
-                <span className="tabela-cab text-[10px] sm:text-[11px]">
+                <span className="section-label text-[10px] sm:text-[11px]">
                   Urgência Alta
                 </span>
                 <span className="font-mono text-[10px] sm:text-[11px] text-[#787877]">
@@ -1013,10 +1005,9 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Card 3 (Cols 7-9): % por Urgência */}
-            <div className="lg:col-span-3 cartao p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
+            <div className="lg:col-span-3 card p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between">
-                <span className="tabela-cab text-[10px] sm:text-[11px]">
+                <span className="section-label text-[10px] sm:text-[11px]">
                   % Por Urgência
                 </span>
                 <span className="font-mono text-[10px] sm:text-[11px] text-[#787877] hidden sm:inline">
@@ -1053,10 +1044,9 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Card 4 (Cols 10-12): Tempo Economizado */}
-            <div className="lg:col-span-3 cartao p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
+            <div className="lg:col-span-3 card p-3.5 sm:p-4 flex flex-col justify-between min-h-[104px] sm:min-h-[118px]">
               <div className="flex items-center justify-between">
-                <span className="tabela-cab text-[10px] sm:text-[11px] truncate">
+                <span className="section-label text-[10px] sm:text-[11px] truncate">
                   Tempo Poupado
                 </span>
                 <Clock className="h-3.5 w-3.5 text-[#0E4D52] shrink-0" />
@@ -1073,9 +1063,9 @@ export default function PaginaTriagemInteligente() {
           </div>
         </section>
 
-        {/* ALERTA GLOBAL DE ERRO DE API (SE HOUVER) */}
+        {/* ALERTA GLOBAL DE ERRO DE API */}
         {metricas.qtdErros > 0 && (
-          <div className="alerta-erro px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold">
+          <div className="alert-error px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold">
             <div className="flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0" />
               <span>
@@ -1086,7 +1076,7 @@ export default function PaginaTriagemInteligente() {
               type="button"
               onClick={handleRetentarErros}
               disabled={carregandoLote}
-              className="btn btn-principal py-1 px-3 text-[11px]"
+              className="btn btn-primary py-1 px-3 text-[11px]"
             >
               <RefreshCw
                 className={`h-3 w-3 ${carregandoLote ? "animate-spin" : ""}`}
@@ -1096,441 +1086,378 @@ export default function PaginaTriagemInteligente() {
           </div>
         )}
 
-        {/* =======================================================================
-            ABA 1: OVERVIEW & FILA (CAIXA DE ENTRADA + PAINEL DE INSPEÇÃO & RESPOSTA)
-           ======================================================================= */}
+        {/* ABA 1: FILA DE ATENDIMENTO */}
         {abaAtiva === "triagem" && (
-          <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch animate-in fade-in duration-150">
-          {/* COLUNA ESQUERDA (Cols 1-5): RÓTULO + CARD UNIFICADO DE CAIXA DE ENTRADA */}
-          <div className="lg:col-span-5 flex flex-col space-y-2">
-            <div className="flex items-center justify-between h-5">
-              <span className="tabela-cab">
-                CAIXA DE ENTRADA ({mensagensFiltradasEOrdenadas.length})
-              </span>
-              {mensagens.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleLimparTudo}
-                  className="text-[11px] font-semibold text-[#787877] hover:text-[#7D1D1D] inline-flex items-center gap-1 transition-colors"
-                >
-                  <Trash2 className="h-3 w-3" />
-                  Limpar fila
-                </button>
-              )}
-            </div>
-
-            {/* Card Unificado da Esquerda (Sem rolagem interna presa no celular; rolagem interna só no Desktop lg:) */}
-            <div className="cartao p-3.5 sm:p-4 flex flex-col lg:max-h-[580px]">
-              {/* Topo Fixo: Busca + Chips de Status + Seletores */}
-              <div className="space-y-3 border-b border-[#D8D5CE] pb-3.5 shrink-0">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={buscaTexto}
-                    onChange={(e) => setBuscaTexto(e.target.value)}
-                    placeholder="Buscar cliente, canal ou resumo..."
-                    className="campo pr-9"
-                  />
-                  <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#787877]" />
-                </div>
-
-                {/* Chips de Status em linha única com rolagem horizontal suave no celular */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                  {[
-                    { id: "todos", label: "Pendentes" },
-                    { id: "escalar", label: "Definir Responsável" },
-                    {
-                      id: "resolvidos",
-                      label: `Resolvidos (${metricas.qtdResolvidos})`,
-                    },
-                  ].map((st) => (
-                    <button
-                      key={st.id}
-                      type="button"
-                      onClick={() =>
-                        setFiltroStatus(
-                          st.id as
-                            | "todos"
-                            | "pendentes"
-                            | "resolvidos"
-                            | "escalar"
-                        )
-                      }
-                      className={`chip text-[11px] py-1 px-2.5 whitespace-nowrap shrink-0 ${
-                        filtroStatus === st.id ? "chip-ativo" : "chip-neutro"
-                      }`}
-                    >
-                      {st.label}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#3D3E40] mb-1">
-                      Categoria
-                    </label>
-                    <select
-                      value={filtroCategoria}
-                      onChange={(e) => setFiltroCategoria(e.target.value)}
-                      className="campo py-1.5 text-xs font-medium"
-                    >
-                      <option value="Todas">Todas</option>
-                      {TODAS_CATEGORIAS.map((cat) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-[#3D3E40] mb-1">
-                      Urgência
-                    </label>
-                    <select
-                      value={filtroUrgencia}
-                      onChange={(e) => setFiltroUrgencia(e.target.value)}
-                      className="campo py-1.5 text-xs font-medium"
-                    >
-                      <option value="Todas">Todas</option>
-                      <option value="Alta">Alta (Vermelho)</option>
-                      <option value="Média">Média (Amarelo)</option>
-                      <option value="Baixa">Baixa (Verde)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* Lista de Chamados: Rolagem natural da página no celular e rolagem interna no Desktop */}
-              <div className="scroll-editorial flex-1 lg:overflow-y-auto space-y-2.5 pt-3 lg:pr-1.5">
-                {mensagensFiltradasEOrdenadas.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
-                    <p className="text-sm font-bold text-[#18191A]">
-                      {mensagens.length === 0
-                        ? "Caixa de Entrada Vazia"
-                        : "Nenhum chamado encontrado"}
-                    </p>
-                    <p className="text-xs text-[#787877] max-w-xs leading-relaxed">
-                      {mensagens.length === 0
-                        ? "Carregue os 15 exemplos de clientes para visualizar a triagem automática em ação."
-                        : "Ajuste os filtros selecionados acima."}
-                    </p>
-                    {mensagens.length === 0 && (
-                      <button
-                        type="button"
-                        onClick={handleCarregarExemplos}
-                        disabled={carregandoLote}
-                        className="btn btn-principal"
-                      >
-                        Carregar 15 exemplos
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  mensagensFiltradasEOrdenadas.map((msg) => {
-                    const ativo = msg.id === idSelecionado;
-                    const escalarHumano =
-                      msg.analise?.urgencia === "Alta" &&
-                      msg.analise?.sentimento === "Negativo";
-
-                    return (
-                      <button
-                        key={msg.id}
-                        type="button"
-                        onClick={() => handleSelecionarMensagem(msg.id)}
-                        className={`w-full text-left rounded-[8px] p-3.5 transition-all border flex flex-col gap-1.5 ${
-                          ativo
-                            ? "border-[#0E4D52] ring-1 ring-[#0E4D52] bg-[#FAF9F5] shadow-xs"
-                            : "border-[#D8D5CE] bg-[#F5F3EE] hover:bg-[#EFECE6]"
-                        } ${msg.resolvido ? "opacity-60" : ""}`}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                            <span className="font-bold text-sm text-[#18191A] truncate">
-                              {msg.nome}
-                            </span>
-                            <span className="rounded-[4px] bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40] shrink-0">
-                              {msg.canal}
-                            </span>
-                            {msg.resolvido && (
-                              <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31] shrink-0">
-                                ✓ Resolvido
-                              </span>
-                            )}
-                          </div>
-                          <span className="font-mono text-[11px] text-[#787877] shrink-0 pt-0.5">
-                            {msg.horario}
-                          </span>
-                        </div>
-
-                        <p className="text-xs text-[#3D3E40] line-clamp-2 leading-relaxed">
-                          {msg.analise?.resumo ? (
-                            <span className="font-semibold text-[#18191A]">
-                              {msg.analise.resumo}
-                            </span>
-                          ) : (
-                            msg.texto
-                          )}
-                        </p>
-
-                        <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
-                          {msg.statusTriagem === "processando" && (
-                            <span className="chip chip-neutro text-[11px] py-0.5">
-                              <Loader2 className="h-3 w-3 animate-spin text-[#0E4D52]" />
-                              Classificando...
-                            </span>
-                          )}
-
-                          {msg.statusTriagem === "erro" && (
-                            <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2.5 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
-                              Erro API
-                            </span>
-                          )}
-
-                          {msg.statusTriagem === "concluido" && msg.analise && (
-                            <>
-                              {renderBadgeUrgencia(msg.analise.urgencia)}
-                              <span className="chip chip-neutro text-[11px] py-0.5">
-                                {msg.analise.categoria}
-                              </span>
-                              {msg.responsavel ? (
-                                <span className="rounded-full bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-[10px] font-bold">
-                                  Resp: {msg.responsavel}
-                                </span>
-                              ) : (
-                                escalarHumano && (
-                                  <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
-                                    Definir o Responsável
-                                  </span>
-                                )
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })
+          <section className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-stretch">
+            {/* COLUNA ESQUERDA: CAIXA DE ENTRADA */}
+            <div className="lg:col-span-5 flex flex-col space-y-2">
+              <div className="flex items-center justify-between h-5">
+                <span className="section-label">
+                  CAIXA DE ENTRADA ({mensagensFiltradasEOrdenadas.length})
+                </span>
+                {mensagens.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setModalLimparAberto(true)}
+                    className="text-[11px] font-semibold text-[#787877] hover:text-[#7D1D1D] inline-flex items-center gap-1 transition-colors"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    Limpar fila
+                  </button>
                 )}
               </div>
-            </div>
-          </div>
 
-          {/* COLUNA DIREITA (Cols 6-12): VISÍVEL LADO A LADO NO DESKTOP, E COMO GAVETA/MODAL TELA CHEIA NO CELULAR */}
-          <div
-            ref={painelDetalheRef}
-            className={`${
-              modalDetalheMobile && mensagemSelecionada
-                ? "fixed inset-0 z-50 bg-[#EFECE6] overflow-y-auto p-3.5 sm:p-6 flex flex-col"
-                : "hidden lg:flex"
-            } lg:static lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:col-span-7 flex-col space-y-2`}
-          >
-            {/* Barra de Voltar Exclusiva para Celular */}
-            {modalDetalheMobile && mensagemSelecionada && (
-              <div className="flex lg:hidden items-center justify-between border-b border-[#D8D5CE] pb-3 mb-1 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setModalDetalheMobile(false)}
-                  className="btn btn-principal py-2 px-4 text-xs"
-                >
-                  ← Voltar para a Caixa de Entrada
-                </button>
-                <span className="text-[11px] font-mono text-[#787877]">
-                  Atendimento
-                </span>
-              </div>
-            )}
+              <div className="card p-3.5 sm:p-4 flex flex-col lg:max-h-[600px]">
+                <div className="space-y-3 border-b border-[#D8D5CE] pb-3.5 shrink-0">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={buscaTexto}
+                      onChange={(e) => setBuscaTexto(e.target.value)}
+                      placeholder="Buscar cliente, canal ou resumo..."
+                      className="input-field pr-9"
+                    />
+                    <Search className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#787877]" />
+                  </div>
 
-            <div className="hidden lg:flex items-center justify-between h-5">
-              <span className="tabela-cab">PAINEL DE INSPEÇÃO & RESPOSTA</span>
-              {mensagemSelecionada && (
-                <span className="text-[11px] font-mono text-[#787877]">
-                  ID: {mensagemSelecionada.id}
-                </span>
-              )}
-            </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                    {[
+                      { id: "todos", label: "Pendentes" },
+                      { id: "escalar", label: "Definir Responsável" },
+                      {
+                        id: "resolvidos",
+                        label: `Resolvidos (${metricas.qtdResolvidos})`,
+                      },
+                    ].map((st) => (
+                      <button
+                        key={st.id}
+                        type="button"
+                        onClick={() =>
+                          setFiltroStatus(
+                            st.id as "todos" | "resolvidos" | "escalar"
+                          )
+                        }
+                        className={`chip text-[11px] py-1 px-2.5 whitespace-nowrap shrink-0 ${
+                          filtroStatus === st.id
+                            ? "chip-active"
+                            : "chip-neutral"
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
 
-            {!mensagemSelecionada ? (
-              <div className="cartao p-10 min-h-[420px] flex flex-col items-center justify-center text-center space-y-4">
-                <div className="mx-auto h-28 w-full max-w-md rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] flex items-center justify-center text-xs font-mono text-[#787877]">
-                  [ Selecione uma mensagem na Caixa de Entrada ]
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#3D3E40] mb-1">
+                        Categoria
+                      </label>
+                      <select
+                        value={filtroCategoria}
+                        onChange={(e) => setFiltroCategoria(e.target.value)}
+                        className="input-field py-1.5 text-xs font-medium"
+                      >
+                        <option value="Todas">Todas</option>
+                        {TODAS_CATEGORIAS.map((cat) => (
+                          <option key={cat} value={cat}>
+                            {cat}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#3D3E40] mb-1">
+                        Urgência
+                      </label>
+                      <select
+                        value={filtroUrgencia}
+                        onChange={(e) => setFiltroUrgencia(e.target.value)}
+                        className="input-field py-1.5 text-xs font-medium"
+                      >
+                        <option value="Todas">Todas</option>
+                        <option value="Alta">Alta (Vermelho)</option>
+                        <option value="Média">Média (Amarelo)</option>
+                        <option value="Baixa">Baixa (Verde)</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-1 max-w-md mx-auto">
-                  <h3 className="text-lg font-bold text-[#18191A]">
-                    Painel de Detalhe & Resposta IA
-                  </h3>
-                  <p className="text-xs text-[#787877] leading-relaxed">
-                    Ao selecionar um cliente ao lado, você verá o texto
-                    original, a classificação validada em JSON, alertas de
-                    escalonamento e o campo editável com a resposta sugerida.
-                  </p>
-                </div>
-                <div className="flex justify-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setModalAberto(true)}
-                    className="btn btn-secundario"
-                  >
-                    Adicionar mensagem
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCarregarExemplos}
-                    disabled={carregandoLote || exemplosJaCarregados}
-                    className="btn btn-principal"
-                  >
-                    {exemplosJaCarregados
-                      ? "15 exemplos carregados"
-                      : "Carregar 15 exemplos"}
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="cartao p-5 flex flex-col space-y-3.5">
-                <div className="space-y-4">
-                  {/* ALERTA INTEGRADO DENTRO DO TOPO DO CARD (COM SELETOR DE RESPONSÁVEL) */}
-                  {mensagemSelecionada.analise?.urgencia === "Alta" &&
-                    mensagemSelecionada.analise?.sentimento === "Negativo" && (
-                      <div className="alerta-erro px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C93B3B] text-white text-[11px] font-extrabold">
-                            !
-                          </span>
-                          <span>
-                            Definir o Responsável: Urgência Alta combinada com
-                            Sentimento Negativo.
-                          </span>
-                        </div>
 
-                        <select
-                          value={mensagemSelecionada.responsavel || ""}
-                          onChange={(e) =>
-                            handleDefinirResponsavel(
-                              mensagemSelecionada.id,
-                              e.target.value
-                            )
-                          }
-                          className="w-full sm:w-auto rounded-[6px] bg-[#F7F5F0] border border-[#C93B3B]/50 px-2.5 py-1.5 sm:py-1 text-xs font-bold text-[#18191A] focus:outline-none focus:border-[#0E4D52]"
+                <div className="custom-scrollbar flex-1 lg:overflow-y-auto space-y-2.5 pt-3 lg:pr-1.5">
+                  {mensagensFiltradasEOrdenadas.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                      <p className="text-sm font-bold text-[#18191A]">
+                        {mensagens.length === 0
+                          ? "Caixa de Entrada Vazia"
+                          : "Nenhum chamado nesta visualização"}
+                      </p>
+                      <p className="text-xs text-[#787877] max-w-xs leading-relaxed">
+                        {mensagens.length === 0
+                          ? "Carregue os 15 exemplos de clientes para visualizar a triagem automática em ação."
+                          : filtroStatus === "todos" &&
+                            metricas.qtdResolvidos > 0
+                          ? "Todos os chamados desta fila já foram resolvidos! Confira na aba Resolvidos."
+                          : "Ajuste os filtros selecionados acima."}
+                      </p>
+                      {mensagens.length === 0 && (
+                        <button
+                          type="button"
+                          onClick={handleCarregarExemplos}
+                          disabled={carregandoLote}
+                          className="btn btn-primary"
                         >
-                          <option value="">Selecionar responsável...</option>
-                          <option value="Supervisor Financeiro">
-                            Supervisor Financeiro
-                          </option>
-                          <option value="Engenharia Nível 2">
-                            Engenharia Nível 2
-                          </option>
-                          <option value="Especialista de Retenção">
-                            Especialista de Retenção
-                          </option>
-                          <option value="Coordenação de Suporte">
-                            Coordenação de Suporte
-                          </option>
-                        </select>
-                      </div>
-                    )}
-
-                  {mensagemSelecionada.resolvido && (
-                    <div className="alerta-sucesso px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
-                      <CheckCircle2 className="h-4 w-4 text-[#1E8E4E] shrink-0" />
-                      <span>
-                        Atendimento concluído e marcado como resolvido.
-                      </span>
+                          Carregar 15 exemplos
+                        </button>
+                      )}
                     </div>
+                  ) : (
+                    mensagensFiltradasEOrdenadas.map((msg) => {
+                      const ativo = msg.id === idSelecionado;
+                      const escalarHumano =
+                        msg.analise?.urgencia === "Alta" &&
+                        msg.analise?.sentimento === "Negativo";
+
+                      return (
+                        <button
+                          key={msg.id}
+                          type="button"
+                          onClick={() => handleSelecionarMensagem(msg.id)}
+                          className={`w-full text-left rounded-lg p-3.5 transition-all border flex flex-col gap-1.5 ${
+                            ativo
+                              ? "border-[#0E4D52] ring-1 ring-[#0E4D52] bg-[#FAF9F5] shadow-xs"
+                              : "border-[#D8D5CE] bg-[#F5F3EE] hover:bg-[#EFECE6]"
+                          } ${msg.resolvido ? "opacity-75" : ""}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <span className="font-bold text-sm text-[#18191A] truncate">
+                                {msg.nome}
+                              </span>
+                              <span className="rounded bg-[#E4E1DA] border border-[#D8D5CE] px-2 py-0.5 text-[10px] font-bold text-[#3D3E40] shrink-0">
+                                {msg.canal}
+                              </span>
+                              {msg.resolvido && (
+                                <span className="rounded-full bg-[#DCEADB] border border-[#76B88A] px-2 py-0.5 text-[10px] font-bold text-[#165B31] shrink-0">
+                                  ✓ Resolvido
+                                </span>
+                              )}
+                            </div>
+                            <span className="font-mono text-[11px] text-[#787877] shrink-0 pt-0.5">
+                              {msg.horario}
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-[#3D3E40] line-clamp-2 leading-relaxed">
+                            {msg.analise?.resumo ? (
+                              <span className="font-semibold text-[#18191A]">
+                                {msg.analise.resumo}
+                              </span>
+                            ) : (
+                              msg.texto
+                            )}
+                          </p>
+
+                          <div className="flex items-center flex-wrap gap-1.5 pt-0.5">
+                            {msg.statusTriagem === "processando" && (
+                              <span className="chip chip-neutral text-[11px] py-0.5">
+                                <Loader2 className="h-3 w-3 animate-spin text-[#0E4D52]" />
+                                Classificando...
+                              </span>
+                            )}
+
+                            {msg.statusTriagem === "erro" && (
+                              <span className="rounded-full bg-[#EED5D2] border border-[#D4847C] px-2.5 py-0.5 text-[10px] font-bold text-[#7D1D1D]">
+                                Erro API
+                              </span>
+                            )}
+
+                            {msg.statusTriagem === "concluido" && msg.analise && (
+                              <>
+                                {renderBadgeUrgencia(msg.analise.urgencia)}
+                                <span className="chip chip-neutral text-[11px] py-0.5">
+                                  {msg.analise.categoria}
+                                </span>
+                                {msg.responsavel ? (
+                                  <span className="rounded-full bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-[10px] font-bold">
+                                    Resp: {msg.responsavel}
+                                  </span>
+                                ) : (
+                                  escalarHumano && (
+                                    <span className="rounded-full bg-[#C93B3B] text-white px-2.5 py-0.5 text-[10px] font-bold">
+                                      Definir o Responsável
+                                    </span>
+                                  )
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })
                   )}
+                </div>
+              </div>
+            </div>
 
-                  {mensagemSelecionada.analise?.urgencia === "Média" &&
-                    !mensagemSelecionada.resolvido && (
-                      <div className="alerta-aviso px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
-                        <AlertTriangle className="h-4 w-4 text-[#D99B16] shrink-0" />
-                        <span>
-                          Prioridade Média — responder dentro da janela
-                          operacional do dia.
-                        </span>
-                      </div>
-                    )}
+            {/* COLUNA DIREITA: PAINEL DE INSPEÇÃO & RESPOSTA (NO CELULAR ABRE COMO TELA DEDICADA) */}
+            <div
+              className={`${
+                modalDetalheMobile && mensagemSelecionada
+                  ? "fixed inset-0 z-50 bg-[#EFECE6] overflow-y-auto p-3.5 sm:p-6 flex flex-col"
+                  : "hidden lg:flex"
+              } lg:static lg:z-auto lg:bg-transparent lg:p-0 lg:overflow-visible lg:col-span-7 flex-col space-y-2`}
+            >
+              {modalDetalheMobile && mensagemSelecionada && (
+                <div className="flex lg:hidden items-center justify-between border-b border-[#D8D5CE] pb-3 mb-1 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setModalDetalheMobile(false)}
+                    className="btn btn-primary py-2 px-4"
+                  >
+                    ← Voltar para a Caixa de Entrada
+                  </button>
+                  <span className="text-[11px] font-mono text-[#787877]">
+                    Atendimento
+                  </span>
+                </div>
+              )}
 
-                  {mensagemSelecionada.analise?.urgencia === "Baixa" &&
-                    !mensagemSelecionada.resolvido && (
-                      <div className="alerta-info px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
-                        <Info className="h-4 w-4 text-[#1976D2] shrink-0" />
-                        <span>
-                          Baixa Urgência — resposta automática pronta para
-                          envio.
-                        </span>
-                      </div>
-                    )}
+              <div className="hidden lg:flex items-center justify-between h-5">
+                <span className="section-label">
+                  PAINEL DE INSPEÇÃO & RESPOSTA
+                </span>
+                {mensagemSelecionada && (
+                  <span className="text-[11px] font-mono text-[#787877]">
+                    ID: {mensagemSelecionada.id}
+                  </span>
+                )}
+              </div>
 
-                  {/* Cabeçalho do Cliente */}
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D8D5CE] pb-3.5">
-                    <div className="flex items-center gap-2.5 flex-wrap">
-                      <h2 className="text-2xl font-extrabold tracking-tight text-[#18191A]">
-                        {mensagemSelecionada.nome}
-                      </h2>
-                      <span className="rounded-[4px] bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-xs font-semibold">
-                        {mensagemSelecionada.canal}
-                      </span>
-                      <span className="font-mono text-xs text-[#787877]">
-                        {mensagemSelecionada.horario}
-                      </span>
-                    </div>
-
+              {!mensagemSelecionada ? (
+                <div className="card p-10 min-h-[420px] flex flex-col items-center justify-center text-center space-y-4">
+                  <div className="mx-auto h-28 w-full max-w-md rounded-lg bg-[#E4E1DA] border border-[#D8D5CE] flex items-center justify-center text-xs font-mono text-[#787877]">
+                    [ Selecione uma mensagem na Caixa de Entrada ]
+                  </div>
+                  <div className="space-y-1 max-w-md mx-auto">
+                    <h3 className="text-lg font-bold text-[#18191A]">
+                      Painel de Detalhe & Resposta IA
+                    </h3>
+                    <p className="text-xs text-[#787877] leading-relaxed">
+                      Ao selecionar um cliente ao lado, você verá o texto
+                      original, a classificação validada, alertas de
+                      responsável e o campo editável com a resposta sugerida.
+                    </p>
+                  </div>
+                  <div className="flex justify-center gap-3 pt-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        classificarMensagem(
-                          mensagemSelecionada,
-                          tomEmpresa,
-                          apiKeyCustom
-                        )
-                      }
-                      disabled={
-                        mensagemSelecionada.statusTriagem === "processando"
-                      }
-                      className="btn btn-secundario py-1.5 px-3 text-xs"
+                      onClick={() => setModalAberto(true)}
+                      className="btn btn-secondary"
                     >
-                      <RefreshCw
-                        className={`h-3.5 w-3.5 ${
-                          mensagemSelecionada.statusTriagem === "processando"
-                            ? "animate-spin"
-                            : ""
-                        }`}
-                      />
-                      Reanalisar
+                      Adicionar mensagem
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCarregarExemplos}
+                      disabled={carregandoLote || exemplosJaCarregados}
+                      className="btn btn-primary"
+                    >
+                      {exemplosJaCarregados
+                        ? "15 exemplos carregados"
+                        : "Carregar 15 exemplos"}
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="card p-5 flex flex-col space-y-3.5">
+                  <div className="space-y-4">
+                    {mensagemSelecionada.analise?.urgencia === "Alta" &&
+                      mensagemSelecionada.analise?.sentimento ===
+                        "Negativo" && (
+                        <div className="alert-error px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
+                          <div className="flex items-center gap-2.5">
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#C93B3B] text-white text-[11px] font-extrabold">
+                              !
+                            </span>
+                            <span>
+                              Definir o Responsável: Urgência Alta combinada com
+                              Sentimento Negativo.
+                            </span>
+                          </div>
 
-                  {/* Texto Original do Cliente */}
-                  <div className="space-y-1.5">
-                    <span className="tabela-cab">TEXTO ORIGINAL DO CLIENTE</span>
-                    <div className="rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] p-3.5 text-sm text-[#18191A] leading-relaxed">
-                      &ldquo;{mensagemSelecionada.texto}&rdquo;
-                    </div>
-                  </div>
-
-                  {/* Estado Processando ou Erro */}
-                  {mensagemSelecionada.statusTriagem === "processando" && (
-                    <div className="alerta-info p-4 flex items-center gap-3 text-xs font-semibold">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#0E4D52]" />
-                      <span>
-                        Consultando {INFO_PROVEDORES[provedorIA].nome} e
-                        validando estrutura JSON...
-                      </span>
-                    </div>
-                  )}
-
-                  {mensagemSelecionada.statusTriagem === "erro" && (
-                    <div className="alerta-erro p-4 space-y-3">
-                      <div className="flex items-start gap-2.5 text-xs">
-                        <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-bold">
-                            Falha na comunicação com a API
-                          </p>
-                          <p className="mt-0.5">
-                            {mensagemSelecionada.erroMensagem}
-                          </p>
+                          <select
+                            value={mensagemSelecionada.responsavel || ""}
+                            onChange={(e) =>
+                              handleDefinirResponsavel(
+                                mensagemSelecionada.id,
+                                e.target.value
+                              )
+                            }
+                            className="w-full sm:w-auto rounded-md bg-[#F7F5F0] border border-[#C93B3B]/50 px-2.5 py-1.5 sm:py-1 text-xs font-bold text-[#18191A] focus:outline-none focus:border-[#0E4D52]"
+                          >
+                            <option value="">Selecionar responsável...</option>
+                            <option value="Supervisor Financeiro">
+                              Supervisor Financeiro
+                            </option>
+                            <option value="Engenharia Nível 2">
+                              Engenharia Nível 2
+                            </option>
+                            <option value="Especialista de Retenção">
+                              Especialista de Retenção
+                            </option>
+                            <option value="Coordenação de Suporte">
+                              Coordenação de Suporte
+                            </option>
+                          </select>
                         </div>
+                      )}
+
+                    {mensagemSelecionada.resolvido && (
+                      <div className="alert-success px-4 py-2.5 flex items-center gap-3 text-xs font-bold">
+                        <CheckCircle2 className="h-4 w-4 text-[#1E8E4E] shrink-0" />
+                        <span>
+                          Atendimento concluído e marcado como resolvido.
+                        </span>
                       </div>
+                    )}
+
+                    {mensagemSelecionada.analise?.urgencia === "Média" &&
+                      !mensagemSelecionada.resolvido && (
+                        <div className="alert-warning px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
+                          <AlertTriangle className="h-4 w-4 text-[#D99B16] shrink-0" />
+                          <span>
+                            Prioridade Média — responder dentro da janela
+                            operacional do dia.
+                          </span>
+                        </div>
+                      )}
+
+                    {mensagemSelecionada.analise?.urgencia === "Baixa" &&
+                      !mensagemSelecionada.resolvido && (
+                        <div className="alert-info px-4 py-2.5 flex items-center gap-3 text-xs font-semibold">
+                          <Info className="h-4 w-4 text-[#1976D2] shrink-0" />
+                          <span>
+                            Baixa Urgência — resposta automática pronta para
+                            envio.
+                          </span>
+                        </div>
+                      )}
+
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D8D5CE] pb-3.5">
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <h2 className="text-2xl font-extrabold tracking-tight text-[#18191A]">
+                          {mensagemSelecionada.nome}
+                        </h2>
+                        <span className="rounded bg-[#0E4D52] text-[#F7F5F0] px-2.5 py-0.5 text-xs font-semibold">
+                          {mensagemSelecionada.canal}
+                        </span>
+                        <span className="font-mono text-xs text-[#787877]">
+                          {mensagemSelecionada.horario}
+                        </span>
+                      </div>
+
                       <button
                         type="button"
                         onClick={() =>
@@ -1540,168 +1467,219 @@ export default function PaginaTriagemInteligente() {
                             apiKeyCustom
                           )
                         }
-                        className="btn btn-principal py-1.5 px-3 text-xs"
+                        disabled={
+                          mensagemSelecionada.statusTriagem === "processando"
+                        }
+                        className="btn btn-secondary py-1.5 px-3"
                       >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                        Tentar de novo
+                        <RefreshCw
+                          className={`h-3.5 w-3.5 ${
+                            mensagemSelecionada.statusTriagem === "processando"
+                              ? "animate-spin"
+                              : ""
+                          }`}
+                        />
+                        Reanalisar
+                      </button>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="section-label">
+                        TEXTO ORIGINAL DO CLIENTE
+                      </span>
+                      <div className="rounded-lg bg-[#E4E1DA] border border-[#D8D5CE] p-3.5 text-sm text-[#18191A] leading-relaxed">
+                        &ldquo;{mensagemSelecionada.texto}&rdquo;
+                      </div>
+                    </div>
+
+                    {mensagemSelecionada.statusTriagem === "processando" && (
+                      <div className="alert-info p-4 flex items-center gap-3 text-xs font-semibold">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#0E4D52]" />
+                        <span>
+                          Consultando {INFO_PROVEDORES[provedorIA].nome} e
+                          validando estrutura JSON...
+                        </span>
+                      </div>
+                    )}
+
+                    {mensagemSelecionada.statusTriagem === "erro" && (
+                      <div className="alert-error p-4 space-y-3">
+                        <div className="flex items-start gap-2.5 text-xs">
+                          <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0 mt-0.5" />
+                          <div>
+                            <p className="font-bold">
+                              Falha na comunicação com a API
+                            </p>
+                            <p className="mt-0.5">
+                              {mensagemSelecionada.erroMensagem}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            classificarMensagem(
+                              mensagemSelecionada,
+                              tomEmpresa,
+                              apiKeyCustom
+                            )
+                          }
+                          className="btn btn-primary py-1.5 px-3"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                          Tentar de novo
+                        </button>
+                      </div>
+                    )}
+
+                    {mensagemSelecionada.analise && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <span className="section-label">
+                            DIAGNÓSTICO DA TRIAGEM
+                          </span>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {renderBadgeUrgencia(
+                              mensagemSelecionada.analise.urgencia
+                            )}
+                            <span className="chip chip-active">
+                              Categoria: {mensagemSelecionada.analise.categoria}
+                            </span>
+                            {renderBadgeSentimento(
+                              mensagemSelecionada.analise.sentimento
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1 items-stretch">
+                            <div className="rounded-lg bg-[#EFECE6] border border-[#D8D5CE] p-3">
+                              <span className="section-label block">
+                                Resumo (Até 15 palavras)
+                              </span>
+                              <p className="mt-1 text-xs sm:text-sm font-bold text-[#18191A] leading-snug">
+                                {mensagemSelecionada.analise.resumo}
+                              </p>
+                            </div>
+
+                            <div className="rounded-lg bg-[#EFECE6] border border-[#D8D5CE] p-3">
+                              <span className="section-label block">
+                                Justificativa de Urgência
+                              </span>
+                              <p className="mt-1 text-xs sm:text-sm text-[#3D3E40] leading-snug">
+                                {
+                                  mensagemSelecionada.analise
+                                    .justificativaUrgencia
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label
+                              htmlFor="campo-resposta-ia"
+                              className="section-label"
+                            >
+                              RESPOSTA SUGERIDA
+                            </label>
+
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                { id: "curta", label: "Mais curta" },
+                                { id: "formal", label: "Mais formal" },
+                                { id: "dados", label: "+ Pedir CPF" },
+                                { id: "original", label: "Restaurar" },
+                              ].map((acao) => (
+                                <button
+                                  key={acao.id}
+                                  type="button"
+                                  onClick={() =>
+                                    handleRefinarResposta(
+                                      mensagemSelecionada,
+                                      acao.id as
+                                        | "curta"
+                                        | "formal"
+                                        | "dados"
+                                        | "original"
+                                    )
+                                  }
+                                  className="chip chip-neutral text-[11px] py-0.5 px-2.5"
+                                >
+                                  {acao.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <textarea
+                            id="campo-resposta-ia"
+                            rows={7}
+                            value={
+                              mensagemSelecionada.respostaEditada ??
+                              mensagemSelecionada.analise.respostaSugerida
+                            }
+                            onChange={(e) =>
+                              handleEditarResposta(
+                                mensagemSelecionada.id,
+                                e.target.value
+                              )
+                            }
+                            className="input-field custom-scrollbar p-4 text-sm sm:text-[15px] text-[#18191A] font-medium leading-relaxed min-h-[168px] resize-y"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {mensagemSelecionada.analise && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D8D5CE]">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleAlternarResolvido(mensagemSelecionada.id)
+                        }
+                        className="btn btn-secondary py-2.5 w-full"
+                      >
+                        <CheckCircle2 className="h-4 w-4 text-[#0E4D52]" />
+                        {mensagemSelecionada.resolvido
+                          ? "Desmarcar resolvido"
+                          : "Marcar como resolvido"}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleCopiarResposta}
+                        className="btn btn-primary py-2.5 w-full"
+                      >
+                        {copiado ? (
+                          <>
+                            <Check className="h-4 w-4" />
+                            Resposta copiada!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-4 w-4" />
+                            Copiar resposta
+                          </>
+                        )}
                       </button>
                     </div>
                   )}
-
-                  {/* Análise Estruturada e Campo Editável */}
-                  {mensagemSelecionada.analise && (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <span className="tabela-cab">
-                          DIAGNÓSTICO DA TRIAGEM
-                        </span>
-                        <div className="flex flex-wrap items-center gap-2">
-                          {renderBadgeUrgencia(
-                            mensagemSelecionada.analise.urgencia
-                          )}
-                          <span className="chip chip-ativo">
-                            Categoria: {mensagemSelecionada.analise.categoria}
-                          </span>
-                          {renderBadgeSentimento(
-                            mensagemSelecionada.analise.sentimento
-                          )}
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-1 items-stretch">
-                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3">
-                            <span className="tabela-cab block">
-                              Resumo (Até 15 palavras)
-                            </span>
-                            <p className="mt-1 text-xs sm:text-sm font-bold text-[#18191A] leading-snug">
-                              {mensagemSelecionada.analise.resumo}
-                            </p>
-                          </div>
-
-                          <div className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-3">
-                            <span className="tabela-cab block">
-                              Justificativa de Urgência
-                            </span>
-                            <p className="mt-1 text-xs sm:text-sm text-[#3D3E40] leading-snug">
-                              {
-                                mensagemSelecionada.analise
-                                  .justificativaUrgencia
-                              }
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Campo Editável de Resposta sem scrollbar grossa */}
-                      <div className="space-y-1.5">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <label
-                            htmlFor="campo-resposta-ia"
-                            className="tabela-cab"
-                          >
-                            RESPOSTA SUGERIDA
-                          </label>
-
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {[
-                              { id: "curta", label: "Mais curta" },
-                              { id: "formal", label: "Mais formal" },
-                              { id: "dados", label: "+ Pedir CPF" },
-                              { id: "original", label: "Restaurar" },
-                            ].map((acao) => (
-                              <button
-                                key={acao.id}
-                                type="button"
-                                onClick={() =>
-                                  handleRefinarResposta(
-                                    mensagemSelecionada,
-                                    acao.id as
-                                      | "curta"
-                                      | "formal"
-                                      | "dados"
-                                      | "original"
-                                  )
-                                }
-                                className="chip chip-neutro text-[11px] py-0.5 px-2.5"
-                              >
-                                {acao.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        <textarea
-                          id="campo-resposta-ia"
-                          rows={7}
-                          value={
-                            mensagemSelecionada.respostaEditada ??
-                            mensagemSelecionada.analise.respostaSugerida
-                          }
-                          onChange={(e) =>
-                            handleEditarResposta(
-                              mensagemSelecionada.id,
-                              e.target.value
-                            )
-                          }
-                          className="campo scroll-editorial p-4 text-sm sm:text-[15px] text-[#18191A] font-medium leading-relaxed min-h-[168px] resize-y"
-                        />
-                      </div>
-                    </div>
-                  )}
                 </div>
-
-                {/* BOTÕES LOGO ABAIXO DO CAMPO DE RESPOSTA (SEM BURACO EM BRANCO) */}
-                {mensagemSelecionada.analise && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#D8D5CE]">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        handleAlternarResolvido(mensagemSelecionada.id)
-                      }
-                      className="btn btn-secundario py-2.5 text-xs w-full"
-                    >
-                      <CheckCircle2 className="h-4 w-4 text-[#0E4D52]" />
-                      {mensagemSelecionada.resolvido
-                        ? "Desmarcar resolvido"
-                        : "Marcar como resolvido"}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleCopiarResposta}
-                      className="btn btn-principal py-2.5 text-xs w-full"
-                    >
-                      {copiado ? (
-                        <>
-                          <Check className="h-4 w-4" />
-                          Resposta copiada!
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-4 w-4" />
-                          Copiar resposta
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
+              )}
+            </div>
+          </section>
         )}
 
-        {/* =======================================================================
-            ABA 2: MÉTRICAS & CATEGORIAS (VISÃO DEDICADA DE ANÁLISE GERENCIAL)
-           ======================================================================= */}
+        {/* ABA 2: MÉTRICAS & CATEGORIAS */}
         {abaAtiva === "analitico" && (
-          <section className="space-y-6 animate-in fade-in duration-150">
+          <section className="space-y-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-              {/* Distribuição por Categoria (8 Colunas) */}
-              <div className="lg:col-span-8 cartao p-6 space-y-5">
+              <div className="lg:col-span-8 card p-6 space-y-5">
                 <div className="flex items-center justify-between border-b border-[#D8D5CE] pb-3.5">
                   <div className="flex items-center gap-2">
                     <BarChart3 className="h-4 w-4 text-[#0E4D52]" />
-                    <span className="tabela-cab">
+                    <span className="section-label">
                       VOLUME E DISTRIBUIÇÃO POR CATEGORIA
                     </span>
                   </div>
@@ -1714,13 +1692,13 @@ export default function PaginaTriagemInteligente() {
                   {metricas.porCategoria.map((item) => (
                     <div
                       key={item.categoria}
-                      className="rounded-[8px] bg-[#EFECE6] border border-[#D8D5CE] p-4 flex flex-col justify-between space-y-3"
+                      className="rounded-lg bg-[#EFECE6] border border-[#D8D5CE] p-4 flex flex-col justify-between space-y-3"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-bold text-[#18191A]">
                           {item.categoria}
                         </span>
-                        <span className="chip chip-neutro text-[11px] py-0.5 px-2 font-mono">
+                        <span className="chip chip-neutral text-[11px] py-0.5 px-2 font-mono">
                           {item.pct}%
                         </span>
                       </div>
@@ -1745,11 +1723,10 @@ export default function PaginaTriagemInteligente() {
                 </div>
               </div>
 
-              {/* Balanço de Sentimento e Resolução (4 Colunas) */}
-              <div className="lg:col-span-4 cartao p-6 space-y-5 flex flex-col justify-between">
+              <div className="lg:col-span-4 card p-6 space-y-5 flex flex-col justify-between">
                 <div className="space-y-4">
                   <div className="flex items-center justify-between border-b border-[#D8D5CE] pb-3.5">
-                    <span className="tabela-cab">
+                    <span className="section-label">
                       TERMÔMETRO DE SENTIMENTO
                     </span>
                     <span className="text-xs font-mono text-[#787877]">
@@ -1758,7 +1735,7 @@ export default function PaginaTriagemInteligente() {
                   </div>
 
                   <div className="space-y-3">
-                    <div className="alerta-sucesso p-3.5 flex items-center justify-between">
+                    <div className="alert-success p-3.5 flex items-center justify-between">
                       <div>
                         <span className="block text-xs font-bold">
                           Sentimento Positivo
@@ -1772,7 +1749,7 @@ export default function PaginaTriagemInteligente() {
                       </span>
                     </div>
 
-                    <div className="rounded-[8px] bg-[#E4E1DA] border border-[#D8D5CE] p-3.5 flex items-center justify-between text-[#18191A]">
+                    <div className="rounded-lg bg-[#E4E1DA] border border-[#D8D5CE] p-3.5 flex items-center justify-between text-[#18191A]">
                       <div>
                         <span className="block text-xs font-bold">
                           Sentimento Neutro
@@ -1786,7 +1763,7 @@ export default function PaginaTriagemInteligente() {
                       </span>
                     </div>
 
-                    <div className="alerta-erro p-3.5 flex items-center justify-between">
+                    <div className="alert-error p-3.5 flex items-center justify-between">
                       <div>
                         <span className="block text-xs font-bold">
                           Sentimento Negativo
@@ -1802,18 +1779,22 @@ export default function PaginaTriagemInteligente() {
                   </div>
                 </div>
 
-                <div className="border-t border-[#D8D5CE] pt-4 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-[#3D3E40]">
-                    Exportar dados consolidados:
-                  </span>
+                <div className="border-t border-[#D8D5CE] pt-4 flex items-center justify-between gap-2">
                   <button
                     type="button"
-                    onClick={handleExportarCSV}
+                    onClick={() => setAbaAtiva("triagem")}
+                    className="btn btn-secondary py-2 px-3.5"
+                  >
+                    ← Voltar para a Fila
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportarExcel}
                     disabled={mensagens.length === 0}
-                    className="btn btn-principal py-2 px-4 text-xs"
+                    className="btn btn-primary py-2 px-4"
                   >
                     <Download className="h-3.5 w-3.5" />
-                    Baixar CSV
+                    Baixar Excel
                   </button>
                 </div>
               </div>
@@ -1821,14 +1802,12 @@ export default function PaginaTriagemInteligente() {
           </section>
         )}
 
-        {/* =======================================================================
-            ABA 3: CONFIGURAÇÕES (TOM DA EMPRESA, PROVEDOR DE IA E CHAVE DE API)
-           ======================================================================= */}
+        {/* ABA 3: CONFIGURAÇÕES */}
         {abaAtiva === "configuracoes" && (
-          <section className="cartao p-6 sm:p-8 space-y-6 animate-in fade-in duration-150">
+          <section className="card p-6 sm:p-8 space-y-6">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#D8D5CE] pb-4">
               <div>
-                <span className="tabela-cab flex items-center gap-2">
+                <span className="section-label flex items-center gap-2">
                   <SlidersHorizontal className="h-4 w-4 text-[#0E4D52]" />
                   CONFIGURAÇÕES DO ESTABELECIMENTO & MOTOR DE IA
                 </span>
@@ -1841,16 +1820,15 @@ export default function PaginaTriagemInteligente() {
               <button
                 type="button"
                 onClick={() => setAbaAtiva("triagem")}
-                className="btn btn-principal py-2 px-5 text-xs"
+                className="btn btn-primary py-2 px-5"
               >
                 <Check className="h-3.5 w-3.5" />
                 Salvar e Voltar para a Fila
               </button>
             </div>
 
-            {/* Escolha Rápida de Modelos de Tom */}
             <div className="space-y-3">
-              <span className="tabela-cab block">
+              <span className="section-label block">
                 1. MODELOS PREDEFINIDOS DE TOM DA EMPRESA
               </span>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1861,7 +1839,7 @@ export default function PaginaTriagemInteligente() {
                       key={preset.id}
                       type="button"
                       onClick={() => setTomEmpresa(preset.valor)}
-                      className={`text-left rounded-[8px] p-4 border transition-all flex flex-col justify-between gap-2 ${
+                      className={`text-left rounded-lg p-4 border transition-all flex flex-col justify-between gap-2 ${
                         ativo
                           ? "border-[#0E4D52] ring-1 ring-[#0E4D52] bg-[#FAF9F5]"
                           : "border-[#D8D5CE] bg-[#EFECE6] hover:bg-[#E4E1DA]"
@@ -1872,7 +1850,7 @@ export default function PaginaTriagemInteligente() {
                           {preset.rotulo}
                         </span>
                         {ativo && (
-                          <span className="chip chip-ativo text-[10px] py-0 px-2">
+                          <span className="chip chip-active text-[10px] py-0 px-2">
                             Ativo
                           </span>
                         )}
@@ -1886,30 +1864,43 @@ export default function PaginaTriagemInteligente() {
               </div>
             </div>
 
-            {/* Campo Editável do Prompt de Tom */}
             <div className="space-y-2">
               <label
                 htmlFor="input-tom-empresa"
-                className="tabela-cab block"
+                className="section-label block"
               >
                 2. INSTRUÇÃO PERSONALIZADA DE TOM DE VOZ (ENVIADA NO PROMPT DA IA)
               </label>
               <textarea
                 id="input-tom-empresa"
                 rows={3}
+                maxLength={500}
                 value={tomEmpresa}
                 onChange={(e) => setTomEmpresa(e.target.value)}
                 placeholder="Descreva como a IA deve se comunicar com os clientes do seu estabelecimento..."
-                className="campo text-sm leading-relaxed"
+                className="input-field text-sm leading-relaxed"
               />
+              {!apiKeyCustom.trim() && (
+                <div className="alert-info px-3.5 py-2.5 flex items-start gap-2 text-[11px] font-medium">
+                  <Info className="h-4 w-4 text-[#1976D2] shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Modo Demonstração ativo:</strong> sem uma chave de
+                    API conectada, o sistema adapta a resposta com base em
+                    palavras-chave de estilo (<em>empático</em>,{" "}
+                    <em>direto/curto</em>, <em>formal/executivo</em> ou{" "}
+                    <em>retenção</em>). Para interpretação 100% livre de
+                    qualquer instrução personalizada, informe uma chave de API
+                    abaixo.
+                  </span>
+                </div>
+              )}
             </div>
 
-            {/* Seleção do Provedor de IA e Chave de API */}
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 border-t border-[#D8D5CE] pt-6">
               <div className="lg:col-span-5 space-y-2">
                 <label
                   htmlFor="select-provedor-ia"
-                  className="tabela-cab block"
+                  className="section-label block"
                 >
                   3. PROVEDOR DE INTELIGÊNCIA ARTIFICIAL (LLM)
                 </label>
@@ -1919,15 +1910,13 @@ export default function PaginaTriagemInteligente() {
                   onChange={(e) =>
                     setProvedorIA(e.target.value as ProvedorIA)
                   }
-                  className="campo py-2.5 text-xs font-bold"
+                  className="input-field py-2.5 text-xs font-bold"
                 >
                   <option value="anthropic">
                     Anthropic — Claude Sonnet 4 (Recomendado)
                   </option>
                   <option value="openai">OpenAI — ChatGPT (GPT-4o Mini)</option>
-                  <option value="gemini">
-                    Google — Gemini 2.5 Flash
-                  </option>
+                  <option value="gemini">Google — Gemini 2.5 Flash</option>
                   <option value="groq">
                     Groq — Llama 3.3 70B (Alta Velocidade)
                   </option>
@@ -1941,7 +1930,7 @@ export default function PaginaTriagemInteligente() {
               <div className="lg:col-span-7 space-y-2">
                 <label
                   htmlFor="input-api-key"
-                  className="tabela-cab flex items-center gap-1.5"
+                  className="section-label flex items-center gap-1.5"
                 >
                   <KeyRound className="h-3.5 w-3.5 text-[#0E4D52]" />
                   4. CHAVE DE ACESSO DA API ({INFO_PROVEDORES[provedorIA].envVar})
@@ -1952,12 +1941,11 @@ export default function PaginaTriagemInteligente() {
                   value={apiKeyCustom}
                   onChange={(e) => setApiKeyCustom(e.target.value)}
                   placeholder={INFO_PROVEDORES[provedorIA].placeholderKey}
-                  className="campo py-2.5 font-mono text-xs"
+                  className="input-field py-2.5 font-mono text-xs"
                 />
                 <p className="text-[11px] text-[#787877]">
                   Se deixado em branco, o aplicativo utiliza a variável do
-                  servidor (<code>.env.local</code>) ou o Modo Demonstração
-                  Zero-Config.
+                  servidor (<code>.env.local</code>) ou o Modo Demonstração.
                 </p>
               </div>
             </div>
@@ -1968,10 +1956,10 @@ export default function PaginaTriagemInteligente() {
       {/* MODAL PARA ADICIONAR MENSAGEM */}
       {modalAberto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#18191A]/50 p-4 backdrop-blur-[2px]">
-          <div className="cartao w-full max-w-lg p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+          <div className="card w-full max-w-lg p-6 space-y-5">
             <div className="flex items-center justify-between border-b border-[#D8D5CE] pb-3">
               <div>
-                <span className="tabela-cab">NOVO ATENDIMENTO</span>
+                <span className="section-label">NOVO ATENDIMENTO</span>
                 <h3 className="text-lg font-extrabold text-[#18191A]">
                   Adicionar Mensagem de Cliente
                 </h3>
@@ -1979,7 +1967,7 @@ export default function PaginaTriagemInteligente() {
               <button
                 type="button"
                 onClick={() => setModalAberto(false)}
-                className="btn-icone p-1.5"
+                className="btn-icon p-1.5"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1987,7 +1975,7 @@ export default function PaginaTriagemInteligente() {
 
             <form onSubmit={handleAdicionarMensagem} className="space-y-4">
               {erroFormulario && (
-                <div className="alerta-erro p-3 flex items-start gap-2.5 text-xs font-bold">
+                <div className="alert-error p-3 flex items-start gap-2.5 text-xs font-bold">
                   <AlertCircle className="h-4 w-4 text-[#C93B3B] shrink-0 mt-0.5" />
                   <span>{erroFormulario}</span>
                 </div>
@@ -2008,7 +1996,7 @@ export default function PaginaTriagemInteligente() {
                       if (erroFormulario) setErroFormulario(null);
                     }}
                     placeholder="Ex: Ana Paula Souza"
-                    className="campo"
+                    className="input-field"
                   />
                 </div>
 
@@ -2019,7 +2007,7 @@ export default function PaginaTriagemInteligente() {
                   <select
                     value={novoCanal}
                     onChange={(e) => setNovoCanal(e.target.value as Canal)}
-                    className="campo"
+                    className="input-field"
                   >
                     <option value="WhatsApp">WhatsApp</option>
                     <option value="E-mail">E-mail</option>
@@ -2038,12 +2026,13 @@ export default function PaginaTriagemInteligente() {
                   type="time"
                   value={novoHorario}
                   onChange={(e) => {
-                    // Remove qualquer caractere que não seja número ou ":" caso o navegador não suporte type="time"
-                    const apenasHora = e.target.value.replace(/[^0-9:]/g, "").slice(0, 5);
+                    const apenasHora = e.target.value
+                      .replace(/[^0-9:]/g, "")
+                      .slice(0, 5);
                     setNovoHorario(apenasHora);
                     if (erroFormulario) setErroFormulario(null);
                   }}
-                  className="campo"
+                  className="input-field"
                 />
               </div>
 
@@ -2061,7 +2050,7 @@ export default function PaginaTriagemInteligente() {
                     if (erroFormulario) setErroFormulario(null);
                   }}
                   placeholder="Digite ou cole aqui a mensagem enviada pelo cliente..."
-                  className="campo resize-none"
+                  className="input-field resize-none"
                 />
               </div>
 
@@ -2069,16 +2058,85 @@ export default function PaginaTriagemInteligente() {
                 <button
                   type="button"
                   onClick={() => setModalAberto(false)}
-                  className="btn btn-secundario py-2.5"
+                  className="btn btn-secondary py-2.5"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="btn btn-principal py-2.5">
+                <button type="submit" className="btn btn-primary py-2.5">
                   <Send className="h-3.5 w-3.5" />
                   Adicionar e Classificar
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO DE LIMPEZA DE FILA COM 3 OPÇÕES */}
+      {modalLimparAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#18191A]/50 p-4 backdrop-blur-[2px]">
+          <div className="card w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b border-[#D8D5CE] pb-3">
+              <div>
+                <span className="section-label text-[#7D1D1D]">
+                  CONFIRMAR EXCLUSÃO
+                </span>
+                <h3 className="text-lg font-extrabold text-[#18191A]">
+                  Como deseja limpar a fila?
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalLimparAberto(false)}
+                className="btn-icon p-1.5"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#3D3E40] leading-relaxed">
+              Escolha se deseja apagar{" "}
+              <strong>apenas os chamados visíveis no filtro atual</strong> (
+              {mensagensFiltradasEOrdenadas.length} item(ns)) ou{" "}
+              <strong>toda a caixa de entrada</strong> ({mensagens.length}{" "}
+              item(ns)).
+            </p>
+
+            <div className="flex flex-col gap-2.5 pt-2">
+              {temFiltroAtivo ||
+              mensagensFiltradasEOrdenadas.length < mensagens.length ? (
+                <button
+                  type="button"
+                  onClick={handleLimparFiltroAtual}
+                  disabled={mensagensFiltradasEOrdenadas.length === 0}
+                  className="btn btn-primary py-2.5 w-full justify-between"
+                >
+                  <span>Limpar apenas o filtro marcado</span>
+                  <span className="font-mono text-[11px] bg-white/20 px-2 py-0.5 rounded-full">
+                    {mensagensFiltradasEOrdenadas.length}
+                  </span>
+                </button>
+              ) : null}
+
+              <button
+                type="button"
+                onClick={handleLimparTudo}
+                className="btn btn-danger py-2.5 w-full justify-between"
+              >
+                <span>Limpar toda a fila</span>
+                <span className="font-mono text-[11px] bg-white/20 px-2 py-0.5 rounded-full">
+                  {mensagens.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModalLimparAberto(false)}
+                className="btn btn-secondary py-2.5 w-full"
+              >
+                Não, manter mensagens
+              </button>
+            </div>
           </div>
         </div>
       )}

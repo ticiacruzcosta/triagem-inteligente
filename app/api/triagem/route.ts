@@ -3,6 +3,7 @@ import {
   detectarInjecaoMaliciosa,
   sanitizarTextoEntrada,
   validarAnaliseIA,
+  validarNomeCliente,
 } from "@/lib/validation";
 import { gerarAnaliseDemonstracao } from "@/lib/fallback";
 import { executarChamadaLLM, INFO_PROVEDORES } from "@/lib/llm-providers";
@@ -36,14 +37,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Bloqueio de segurança contra SQL Injection e XSS na camada de API
+    // Bloqueio de segurança contra SQL Injection, XSS e Code Injection (ISO/IEC 27001)
     if (
       detectarInjecaoMaliciosa(texto) ||
-      (nome && detectarInjecaoMaliciosa(nome))
+      (nome && (!validarNomeCliente(nome) || detectarInjecaoMaliciosa(nome))) ||
+      (tomEmpresa && detectarInjecaoMaliciosa(tomEmpresa))
     ) {
       return NextResponse.json(
         {
-          erro: "Entrada bloqueada pelo filtro de segurança: padrão de comando SQL Injection ou script não permitido.",
+          erro: "Entrada bloqueada pelo filtro de segurança (ISO 27001): código executável, SQL Injection ou script não permitido.",
         },
         { status: 400 }
       );

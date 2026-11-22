@@ -177,12 +177,40 @@ export function gerarAnaliseDemonstracao(
     corpoResposta = `Agradecemos pelo interesse em construir uma parceria conosco! Encaminhamos sua apresentação para o nosso time de Novos Negócios e Parcerias, que entrará em contato em breve pelo canal ${canal}.`;
   }
 
-  const assinaturaTom =
-    tomEmpresa && tomEmpresa.toLowerCase().includes("formal")
-      ? "Atenciosamente, Equipe de Suporte Especializado."
-      : "Um abraço, Equipe de Suporte.";
+  const tomLower = (tomEmpresa || "").toLowerCase();
+  const ehFormal =
+    tomLower.includes("formal") ||
+    tomLower.includes("executivo") ||
+    tomLower.includes("corporativo") ||
+    tomLower.includes("respeitoso");
+  const ehCurto =
+    tomLower.includes("direto") ||
+    tomLower.includes("objetivo") ||
+    tomLower.includes("conciso") ||
+    tomLower.includes("curto");
+  const ehRetencao =
+    tomLower.includes("reten") ||
+    tomLower.includes("consultivo") ||
+    tomLower.includes("reverter");
 
-  const respostaSugerida = `Olá, ${primeiroNome}! Tudo bem?\n\n${corpoResposta}\n\nQualquer dúvida adicional, seguimos à disposição pelo ${canal}.\n${assinaturaTom}`;
+  let saudacao = `Olá, ${primeiroNome}! Tudo bem?`;
+  let fechamento = `Qualquer dúvida adicional, seguimos à disposição pelo ${canal}.\nUm abraço, Equipe de Suporte.`;
+
+  if (ehFormal) {
+    saudacao = `Prezado(a) ${nome || primeiroNome},`;
+    fechamento = `Permanecemos à inteira disposição por meio do canal ${canal}.\nAtenciosamente,\nEquipe de Suporte Especializado.`;
+  } else if (ehCurto) {
+    saudacao = `Olá, ${primeiroNome}.`;
+    const primeiraFrase =
+      corpoResposta.split(/(?<=[.!?])\s+/)[0] || corpoResposta;
+    corpoResposta = primeiraFrase;
+    fechamento = `Seguimos à disposição pelo ${canal}.\nEquipe de Suporte.`;
+  } else if (ehRetencao) {
+    saudacao = `Olá, ${primeiroNome}! Valorizamos muito a sua parceria conosco.`;
+    fechamento = `Nosso time acompanha seu caso de perto pelo ${canal} até a solução completa.\nConte conosco,\nEquipe de Relacionamento.`;
+  }
+
+  const respostaSugerida = `${saudacao}\n\n${corpoResposta}\n\n${fechamento}`;
 
   return {
     categoria,

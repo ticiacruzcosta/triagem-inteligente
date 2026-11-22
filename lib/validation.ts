@@ -15,23 +15,48 @@ const SENTIMENTOS_VALIDOS: Sentimento[] = ["Positivo", "Neutro", "Negativo"];
 
 const REGEX_HORARIO_24H = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
-// Padrões clássicos de SQL Injection, XSS e Prompt Injection malicioso
+// Padrões de SQL Injection, XSS, Code Injection (JS/Node/Shell) e Template Injection (ISO/IEC 27001 A.8.26 / A.8.28)
 const PADROES_INJECAO_MALICIOSA: RegExp[] = [
+  // SQL Injection
   /\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE|EXEC)\b[\s\S]*\b(FROM|INTO|TABLE|DATABASE|WHERE|SET|VALUES|ALL)\b/i,
   /('|"|;)\s*(OR|AND)\s+('|"|\d+|\w+)\s*=\s*('|"|\d+|\w+)/i,
   /--\s*$/m,
   /;\s*(DROP|DELETE|UPDATE|INSERT|SELECT)\b/i,
+  // XSS
   /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/i,
   /javascript\s*:/i,
   /on(error|load|click|mouseover)\s*=/i,
+  // Code Injection (JavaScript / Node.js / PHP / Python / Shell)
+  /\b(const|let|var)\s+[\w{}\s,]+\s*=\s*require\s*\(/i,
+  /\brequire\s*\(\s*['"`][^'"`]+['"`]\s*\)/i,
+  /\bimport\s+[\w*{}\s,]+\s+from\s+['"`]/i,
+  /\b(eval|Function|execSync|spawnSync|child_process)\s*\(/i,
+  /\bprocess\.(env|exit|argv|mainModule)\b/i,
+  /\b(express|pg|mysql|sqlite|dompurify|jsdom)\b.*\(/i,
+  /(=>|;\s*\/\/|\/\*[\s\S]*?\*\/)/,
+  // Template / Server-Side Injection
+  /\$\{[^}]+\}/,
+  /\{\{[^}]+\}\}/,
 ];
 
+const REGEX_NOME_CLIENTE_SEGURO = /^[A-Za-zÀ-ÖØ-öø-ÿ0-9\s.'-]{2,80}$/;
+
 /**
- * Verifica se um texto contém tentativas de SQL Injection ou XSS.
+ * Verifica se um texto contém tentativas de SQL Injection, XSS ou Code Injection.
  */
 export function detectarInjecaoMaliciosa(texto: string): boolean {
   if (!texto) return false;
   return PADROES_INJECAO_MALICIOSA.some((regex) => regex.test(texto));
+}
+
+/**
+ * Valida nome de cliente por lista de permissão (allowlist) conforme ISO/IEC 27001.
+ */
+export function validarNomeCliente(nome: string): boolean {
+  const limpo = nome.trim();
+  if (!limpo) return false;
+  if (detectarInjecaoMaliciosa(limpo)) return false;
+  return REGEX_NOME_CLIENTE_SEGURO.test(limpo);
 }
 
 /**
