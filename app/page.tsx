@@ -39,7 +39,6 @@ import {
   AlertCircle,
   Info,
   LogOut,
-  User,
 } from "lucide-react";
 
 const STORAGE_KEY_MENSAGENS = "triagem_inteligente_mensagens_v1";
@@ -98,11 +97,6 @@ const TODAS_CATEGORIAS: Categoria[] = [
 
 export default function PaginaTriagemInteligente() {
   const router = useRouter();
-  const [usuarioLogado, setUsuarioLogado] = useState<{
-    nome: string;
-    cargo: string;
-    email: string;
-  } | null>(null);
   const [mensagens, setMensagens] = useState<MensagemCliente[]>([]);
   const [carregadoStorage, setCarregadoStorage] = useState(false);
   const [idSelecionado, setIdSelecionado] = useState<string | null>(null);
@@ -162,18 +156,6 @@ export default function PaginaTriagemInteligente() {
       setModalDetalheMobile(true);
     }
   };
-
-  // Carregar usuário autenticado da sessão
-  useEffect(() => {
-    fetch("/api/auth/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((dados) => {
-        if (dados?.usuario) {
-          setUsuarioLogado(dados.usuario);
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -876,24 +858,15 @@ export default function PaginaTriagemInteligente() {
               <br />
               Inteligente
             </h1>
-            <div className="flex flex-wrap items-center gap-3 pt-1">
-              {usuarioLogado && (
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-[#E4E1DA] border border-[#D8D5CE] px-3 py-1 text-[11px] font-semibold text-[#18191A]">
-                  <User className="h-3 w-3 text-[#0E4D52]" />
-                  <span>{usuarioLogado.nome}</span>
-                  <span className="text-[#787877]">• {usuarioLogado.cargo}</span>
-                </div>
-              )}
-              {(apiKeyCustom.trim() ||
-                (modoExecucao && modoExecucao !== "demonstracao")) && (
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#0E4D52]">
-                  <span className="h-2 w-2 rounded-full bg-[#1E8E4E]" />
-                  <span>
-                    API Conectada: {INFO_PROVEDORES[provedorIA].nome}
-                  </span>
-                </div>
-              )}
-            </div>
+            {(apiKeyCustom.trim() ||
+              (modoExecucao && modoExecucao !== "demonstracao")) && (
+              <div className="flex items-center gap-2 pt-1 text-xs font-semibold text-[#0E4D52]">
+                <span className="h-2 w-2 rounded-full bg-[#1E8E4E]" />
+                <span>
+                  API Conectada: {INFO_PROVEDORES[provedorIA].nome}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="lg:col-span-6 flex flex-col justify-between items-stretch lg:items-end gap-4">

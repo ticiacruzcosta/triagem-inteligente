@@ -10,13 +10,13 @@ const USUARIOS_PERMITIDOS: Array<UsuarioSessao & { senha: string }> = [
   {
     email: "atendente@triagem.com",
     senha: "Triagem@2026",
-    nome: "Letícia Costa",
+    nome: "Equipe de Suporte",
     cargo: "Atendente de Suporte",
   },
   {
     email: "supervisor@triagem.com",
     senha: "Supervisor@2026",
-    nome: "Coordenação SAGA",
+    nome: "Coordenação",
     cargo: "Supervisor de Operações",
   },
 ];
