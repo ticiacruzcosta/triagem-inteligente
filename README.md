@@ -1,6 +1,6 @@
 <div align="center">
 
-# Triagem Inteligente — Plataforma de Suporte e Atendimento com IA
+# Triagem Inteligente Plataforma de Suporte e Atendimento com IA
 
 **Classificação automatizada de chamados, análise de sentimento, priorização por SLA/urgência e geração de respostas contextualizadas com suporte Multi-LLM (Anthropic Claude, OpenAI, Google Gemini e Groq).**
 
